@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">аудио</string>
+    <string name="action_ok">ок</string>
+    <string name="action_cancel">отмена</string>
+    <string name="open_files">+ открыть аудиофайлы</string>
+    <string name="empty">здесь пока пусто. + внизу открывает аудиофайлы с телефона; «открыть с помощью» из любого приложения тоже работает.</string>
+    <string name="play">воспроизвести</string>
+    <string name="stop">стоп</string>
+    <string name="back5">−5 с</string>
+    <string name="fwd10">+10 с</string>
+    <string name="speed">скорость</string>
+    <string name="transcribe">расшифровать</string>
+    <string name="transcribe_again">расшифровать заново</string>
+    <string name="stop_transcription">остановить расшифровку</string>
+    <string name="open_transcript">открыть расшифровку</string>
+    <string name="transcript_saved">файл .txt в Documents/Transcriptions</string>
+    <string name="transcript_word">расшифровка</string>
+    <string name="transcript_gone">файла расшифровки больше нет</string>
+    <string name="share_audio">поделиться звуком…</string>
+    <string name="share_transcript">поделиться расшифровкой…</string>
+    <string name="save_copy">сохранить копию в папку…</string>
+    <string name="copied">скопировано</string>
+    <string name="copy_failed">не удалось скопировать файл</string>
+    <string name="remove">убрать из списка</string>
+    <string name="settings">настройки</string>
+    <string name="theme_dark">белое на чёрном</string>
+    <string name="theme_light">чёрное на белом</string>
+    <string name="colours">цвета</string>
+    <string name="text_size">размер текста</string>
+    <string name="font">шрифт</string>
+    <string name="haptics">виброотклик</string>
+    <string name="on">вкл</string>
+    <string name="off">выкл</string>
+    <string name="language">язык речи</string>
+    <string name="language_auto">определяется</string>
+    <string name="model">модель расшифровки (больше = лучше, медленнее)</string>
+    <string name="model_not_yet">загружается при первом использовании</string>
+    <string name="about">воспроизводит аудиофайлы и расшифровывает их на телефоне; ничего не уходит наружу</string>
+    <string name="transcripts_hint">Расшифровки — обычные файлы .txt в Documents/Transcriptions: их откроет любая читалка, в том числе Reader\'s Books.</string>
+    <string name="cant_open">этот файл не открывается — откройте его снова через +</string>
+    <string name="no_speech">(речь не обнаружена)</string>
+    <string name="channel_transcription">расшифровка</string>
+    <string name="phase_model">загрузка модели · %1$d%%</string>
+    <string name="phase_transcribe">расшифровка · %1$d%%</string>
+    <string name="phase_save">сохранение расшифровки</string>
+    <string name="phase_waiting">ожидает расшифровки</string>
+    <string name="widget_name">Reader\'s Audio Player · последнее</string>
+    <string name="widget_desc">последний прослушанный файл: ▶ продолжает с места остановки</string>
+    <string name="widget_empty">пока ничего не прослушано</string>
+</resources>

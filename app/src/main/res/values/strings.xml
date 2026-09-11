@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reader\'s Audio Player</string>
+    <string name="action_ok">ok</string>
+    <string name="app_title">audio</string>
+    <string name="action_cancel">cancel</string>
+    <string name="open_files">+ open audio files</string>
+    <string name="empty">nothing here yet. + below opens audio files from the phone; “open with” from any app works too.</string>
+    <string name="play">play</string>
+    <string name="stop">stop</string>
+    <string name="back5">−5 s</string>
+    <string name="fwd10">+10 s</string>
+    <string name="speed">speed</string>
+    <string name="transcribe">transcribe</string>
+    <string name="transcribe_again">transcribe again</string>
+    <string name="stop_transcription">stop the transcription</string>
+    <string name="open_transcript">open the transcript</string>
+    <string name="transcript_saved">a .txt in Documents/Transcriptions</string>
+    <string name="transcript_word">transcript</string>
+    <string name="transcript_gone">the transcript file is no longer there</string>
+    <string name="share_audio">share the audio…</string>
+    <string name="share_transcript">share the transcript…</string>
+    <string name="save_copy">save a copy to a folder…</string>
+    <string name="copied">copied</string>
+    <string name="copy_failed">could not copy the file</string>
+    <string name="remove">remove from the list</string>
+    <string name="settings">settings</string>
+    <string name="theme_dark">white on black</string>
+    <string name="theme_light">black on white</string>
+    <string name="colours">colours</string>
+    <string name="text_size">text size</string>
+    <string name="font">font</string>
+    <string name="haptics">haptic tick</string>
+    <string name="on">on</string>
+    <string name="off">off</string>
+    <string name="language">language spoken</string>
+    <string name="language_auto">detected</string>
+    <string name="model">transcription model (bigger = better, slower)</string>
+    <string name="model_not_yet">fetched at first use</string>
+    <string name="about">plays audio files and transcribes them on the phone; nothing leaves it</string>
+    <string name="transcripts_hint">Transcripts are plain .txt files in Documents/Transcriptions: any reader opens them, Reader\'s Books included.</string>
+    <string name="cant_open">this file cannot be opened — open it again with +</string>
+    <string name="no_speech">(no speech detected)</string>
+    <string name="channel_transcription">transcription</string>
+    <string name="phase_model">fetching the model · %1$d%%</string>
+    <string name="phase_transcribe">transcribing · %1$d%%</string>
+    <string name="phase_save">saving the transcript</string>
+    <string name="phase_waiting">waiting to transcribe</string>
+    <string name="widget_name">Reader\'s Audio Player · last played</string>
+    <string name="widget_desc">the last file played: ▶ resumes it where you stopped</string>
+    <string name="widget_empty">nothing played yet</string>
+</resources>

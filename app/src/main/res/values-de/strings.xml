@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">Audio</string>
+    <string name="action_cancel">abbrechen</string>
+    <string name="open_files">+ Audiodateien öffnen</string>
+    <string name="empty">noch nichts hier. + unten öffnet Audiodateien vom Telefon; „Öffnen mit“ aus jeder App geht auch.</string>
+    <string name="play">abspielen</string>
+    <string name="stop">Stopp</string>
+    <string name="back5">−5 s</string>
+    <string name="fwd10">+10 s</string>
+    <string name="speed">Tempo</string>
+    <string name="transcribe">transkribieren</string>
+    <string name="transcribe_again">erneut transkribieren</string>
+    <string name="stop_transcription">Transkription stoppen</string>
+    <string name="open_transcript">Transkript öffnen</string>
+    <string name="transcript_saved">eine .txt in Documents/Transcriptions</string>
+    <string name="transcript_word">Transkript</string>
+    <string name="transcript_gone">die Transkriptdatei ist nicht mehr da</string>
+    <string name="share_audio">Ton teilen…</string>
+    <string name="share_transcript">Transkript teilen…</string>
+    <string name="save_copy">Kopie in einem Ordner speichern…</string>
+    <string name="copied">kopiert</string>
+    <string name="copy_failed">Datei konnte nicht kopiert werden</string>
+    <string name="remove">aus der Liste entfernen</string>
+    <string name="settings">Einstellungen</string>
+    <string name="theme_dark">weiss auf schwarz</string>
+    <string name="theme_light">schwarz auf weiss</string>
+    <string name="colours">Farben</string>
+    <string name="text_size">Textgrösse</string>
+    <string name="font">Schrift</string>
+    <string name="haptics">haptisches Feedback</string>
+    <string name="on">an</string>
+    <string name="off">aus</string>
+    <string name="language">gesprochene Sprache</string>
+    <string name="language_auto">erkannt</string>
+    <string name="model">Transkriptionsmodell (grösser = besser, langsamer)</string>
+    <string name="model_not_yet">wird beim ersten Mal geladen</string>
+    <string name="about">spielt Audiodateien ab und transkribiert sie auf dem Telefon; nichts verlässt es</string>
+    <string name="transcripts_hint">Transkripte sind einfache .txt-Dateien in Documents/Transcriptions: jeder Reader öffnet sie, auch Reader\'s Books.</string>
+    <string name="cant_open">diese Datei lässt sich nicht öffnen — mit + erneut öffnen</string>
+    <string name="no_speech">(keine Sprache erkannt)</string>
+    <string name="channel_transcription">Transkription</string>
+    <string name="phase_model">Modell wird geladen · %1$d%%</string>
+    <string name="phase_transcribe">Transkription · %1$d%%</string>
+    <string name="phase_save">Transkript wird gespeichert</string>
+    <string name="phase_waiting">wartet auf Transkription</string>
+    <string name="widget_name">Reader\'s Audio Player · zuletzt gehört</string>
+    <string name="widget_desc">die zuletzt gehörte Datei: ▶ spielt dort weiter, wo Sie aufgehört haben</string>
+    <string name="widget_empty">noch nichts gehört</string>
+</resources>

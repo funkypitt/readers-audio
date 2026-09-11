@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">audio</string>
+    <string name="action_cancel">annuler</string>
+    <string name="open_files">+ ouvrir des fichiers audio</string>
+    <string name="empty">rien ici pour l\'instant. + ci-dessous ouvre des fichiers audio du téléphone ; « ouvrir avec » depuis n\'importe quelle app fonctionne aussi.</string>
+    <string name="play">lire</string>
+    <string name="stop">arrêter</string>
+    <string name="back5">−5 s</string>
+    <string name="fwd10">+10 s</string>
+    <string name="speed">vitesse</string>
+    <string name="transcribe">transcrire</string>
+    <string name="transcribe_again">transcrire à nouveau</string>
+    <string name="stop_transcription">arrêter la transcription</string>
+    <string name="open_transcript">ouvrir la transcription</string>
+    <string name="transcript_saved">un .txt dans Documents/Transcriptions</string>
+    <string name="transcript_word">transcription</string>
+    <string name="transcript_gone">le fichier de transcription n\'existe plus</string>
+    <string name="share_audio">partager le son…</string>
+    <string name="share_transcript">partager la transcription…</string>
+    <string name="save_copy">enregistrer une copie dans un dossier…</string>
+    <string name="copied">copié</string>
+    <string name="copy_failed">impossible de copier le fichier</string>
+    <string name="remove">retirer de la liste</string>
+    <string name="settings">réglages</string>
+    <string name="theme_dark">blanc sur noir</string>
+    <string name="theme_light">noir sur blanc</string>
+    <string name="colours">couleurs</string>
+    <string name="text_size">taille du texte</string>
+    <string name="font">police</string>
+    <string name="haptics">retour haptique</string>
+    <string name="on">actif</string>
+    <string name="off">inactif</string>
+    <string name="language">langue parlée</string>
+    <string name="language_auto">détectée</string>
+    <string name="model">modèle de transcription (plus gros = meilleur, plus lent)</string>
+    <string name="model_not_yet">téléchargé à la première utilisation</string>
+    <string name="about">lit des fichiers audio et les transcrit sur le téléphone ; rien n\'en sort</string>
+    <string name="transcripts_hint">Les transcriptions sont de simples fichiers .txt dans Documents/Transcriptions : n\'importe quelle liseuse les ouvre, Reader\'s Books compris.</string>
+    <string name="cant_open">impossible d\'ouvrir ce fichier — rouvrez-le avec +</string>
+    <string name="no_speech">(aucune parole détectée)</string>
+    <string name="channel_transcription">transcription</string>
+    <string name="phase_model">téléchargement du modèle · %1$d%%</string>
+    <string name="phase_transcribe">transcription · %1$d%%</string>
+    <string name="phase_save">enregistrement de la transcription</string>
+    <string name="phase_waiting">en attente de transcription</string>
+    <string name="widget_name">Reader\'s Audio Player · dernière écoute</string>
+    <string name="widget_desc">le dernier fichier écouté : ▶ reprend là où vous vous étiez arrêté</string>
+    <string name="widget_empty">rien écouté pour l\'instant</string>
+</resources>

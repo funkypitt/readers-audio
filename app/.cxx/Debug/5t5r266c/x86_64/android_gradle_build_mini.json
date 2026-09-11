@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/home/freedomfighter/code/readers-audio/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/freedomfighter/android-sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/home/freedomfighter/code/readers-audio/app/.cxx/Debug/5t5r266c/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/freedomfighter/android-sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/home/freedomfighter/code/readers-audio/app/.cxx/Debug/5t5r266c/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "whisper::@6890427a1f51a3e7e1df": {
+      "artifactName": "whisper",
+      "abi": "x86_64",
+      "output": "/home/freedomfighter/code/readers-audio/app/build/intermediates/cxx/Debug/5t5r266c/obj/x86_64/libwhisper.so",
+      "runtimeFiles": []
+    }
+  }
+}
