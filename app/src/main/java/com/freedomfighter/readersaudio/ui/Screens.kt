@@ -48,6 +48,7 @@ import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.data.TextSize
 import com.freedomfighter.readersaudio.data.clock
 import com.freedomfighter.readersaudio.whisper.Models
+import com.freedomfighter.readersaudio.whisper.Prompts
 import java.util.Locale
 
 sealed class Screen {
@@ -102,7 +103,7 @@ fun itemStatus(item: Item, activity: MainActivity): String {
 
 /** Everything one can do with a file: from a long press in the list, or ⋯ in the player. */
 @Composable
-fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit, inPlayer: Boolean = false) {
+fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit, onTranscribe: (Item) -> Unit, inPlayer: Boolean = false) {
     val t = TranscribeService.Live
     val busy = t.id == item.id || item.id in t.waiting
     val hasTranscript = item.transcriptUri.isNotBlank()
@@ -110,7 +111,7 @@ fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit
         if (!inPlayer) add(MenuItem(stringResource(R.string.play)) { activity.play(item); nav.push(Screen.Player) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved)) { activity.openTranscript(item) })
         if (busy) add(MenuItem(stringResource(R.string.stop_transcription)) { activity.cancelTranscription() })
-        else add(MenuItem(stringResource(if (hasTranscript) R.string.transcribe_again else R.string.transcribe)) { activity.transcribe(item) })
+        else add(MenuItem(stringResource(if (hasTranscript) R.string.transcribe_again else R.string.transcribe)) { onTranscribe(item) })
         add(MenuItem(stringResource(R.string.share_audio)) { activity.shareAudio(item) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.share_transcript)) { activity.shareTranscript(item) })
         add(MenuItem(stringResource(R.string.save_copy)) { activity.saveCopy(item) })
@@ -130,6 +131,7 @@ fun ListScreen(nav: Nav, app: App, activity: MainActivity) {
     val ui = activity.ui
     var menu by remember { mutableStateOf(false) }
     var rowMenu by remember { mutableStateOf<String?>(null) }
+    var sheetFor by remember { mutableStateOf<String?>(null) }
     Page {
         Column(Modifier.fillMaxSize()) {
             ScreenTitle(stringResource(R.string.app_title), onBack = null, trailing = "⋯", onTrailing = { menu = true })
@@ -161,7 +163,11 @@ fun ListScreen(nav: Nav, app: App, activity: MainActivity) {
         ))
         rowMenu?.let { id ->
             val item = all.firstOrNull { it.id == id }
-            if (item == null) rowMenu = null else ItemMenu(item, activity, nav, onDismiss = { rowMenu = null })
+            if (item == null) rowMenu = null else ItemMenu(item, activity, nav, onDismiss = { rowMenu = null }, onTranscribe = { sheetFor = it.id })
+        }
+        sheetFor?.let { id ->
+            val item = all.firstOrNull { it.id == id }
+            if (item == null) sheetFor = null else TranscribeSheet(item, activity, onDismiss = { sheetFor = null })
         }
     }
 }
@@ -179,6 +185,7 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
     val ui = activity.ui
     val item = all.firstOrNull { it.id == ui.mediaId } ?: all.filter { it.lastPlayed > 0 }.maxByOrNull { it.lastPlayed }
     var menu by remember { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf(false) }
     BackHandler { nav.pop() }
     if (item == null) { LaunchedEffect(Unit) { nav.pop() }; return }
     val current = ui.mediaId == item.id
@@ -224,7 +231,7 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                         TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
                         TextRow(stringResource(R.string.share_transcript), size = typo.title) { activity.shareTranscript(item) }
                     }
-                    else -> TextRow(stringResource(R.string.transcribe), secondary = languageLabel(settings.language) + " · " + Models.byKey(settings.model).label, size = typo.title) { activity.transcribe(item) }
+                    else -> TextRow(stringResource(R.string.transcribe), secondary = stringResource(R.string.transcribe_hint), size = typo.title) { sheet = true }
                 }
                 if (t.errorId == item.id && t.error.isNotBlank() && t.id != item.id) {
                     Small(t.error, Modifier.padding(horizontal = rowPadH, vertical = 6.dp), maxLines = 3)
@@ -232,7 +239,8 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
             }
             Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
         }
-        if (menu) ItemMenu(item, activity, nav, onDismiss = { menu = false }, inPlayer = true)
+        if (menu) ItemMenu(item, activity, nav, onDismiss = { menu = false }, onTranscribe = { sheet = true }, inPlayer = true)
+        if (sheet) TranscribeSheet(item, activity, onDismiss = { sheet = false })
     }
 }
 
@@ -264,15 +272,6 @@ fun SettingsScreen(nav: Nav, app: App) {
             ScreenTitle(stringResource(R.string.settings), onBack = { nav.pop() })
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 Small(stringResource(R.string.transcripts_hint), Modifier.padding(horizontal = rowPadH).padding(top = 16.dp, bottom = 4.dp), maxLines = 5)
-                val languages = Prefs.languages()
-                TextRow(languageLabel(s.language), secondary = stringResource(R.string.language)) {
-                    app.prefs.setLanguage(languages[(languages.indexOf(s.language).coerceAtLeast(0) + 1) % languages.size])
-                }
-                val m = Models.byKey(s.model)
-                val state = when { Models.isDownloaded(context, m) -> ""; downloading >= 0 -> " · $downloading%"; else -> " · " + stringResource(R.string.model_not_yet) }
-                TextRow(m.label + " · " + m.mb + " MB" + state, secondary = stringResource(R.string.model)) {
-                    app.prefs.setModel(Models.ALL[(Models.ALL.indexOfFirst { it.key == s.model }.coerceAtLeast(0) + 1) % Models.ALL.size].key)
-                }
                 Rule(Modifier.padding(vertical = 8.dp))
                 TextRow(if (colors.isDark) stringResource(R.string.theme_dark) else stringResource(R.string.theme_light), secondary = stringResource(R.string.colours)) { app.prefs.toggleTheme(colors.isDark) }
                 TextRow(when (s.textSize) { TextSize.SMALL -> "S"; TextSize.MEDIUM -> "M"; TextSize.LARGE -> "L" }, secondary = stringResource(R.string.text_size)) {
@@ -288,4 +287,52 @@ fun SettingsScreen(nav: Nav, app: App) {
             Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
         }
     }
+}
+
+
+/**
+ * Asked before every transcription: the language spoken, the phone's by default, and the
+ * quality, normal by default. High quality is Whisper large-v3-turbo: better punctuation and
+ * accuracy, much slower. A bottom sheet in the Reader's style.
+ */
+@Composable
+fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val colors = LocalColors.current
+    val typo = LocalTypo.current
+    var language by remember { mutableStateOf(Prefs.deviceLanguage()) }
+    var quality by remember { mutableStateOf(Models.DEFAULT) }
+    var picking by remember { mutableStateOf(false) }
+    val downloading by Models.downloading.collectAsState()
+    BackHandler(onBack = onDismiss)
+    Box(Modifier.fillMaxSize().background(colors.bg.copy(alpha = 0.6f)).noRippleClickable(onClick = onDismiss)) {
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(colors.bg).noRippleClickable { }
+                .windowInsetsPadding(WindowInsets.navigationBars)
+        ) {
+            Rule(color = colors.fg)
+            Small(item.title, Modifier.padding(horizontal = rowPadH).padding(top = 14.dp, bottom = 2.dp), maxLines = 1)
+            TextRow(languageLabel(language), secondary = stringResource(R.string.language), size = typo.title) { picking = true }
+            Rule(Modifier.padding(vertical = 4.dp))
+            Models.ALL.forEach { m ->
+                val state = when {
+                    Models.isDownloaded(context, m) -> ""
+                    downloading >= 0 -> " · $downloading%"
+                    else -> " · " + stringResource(R.string.model_not_yet)
+                }
+                TextRow(
+                    stringResource(if (m == Models.HIGH) R.string.quality_high else R.string.quality_normal),
+                    inverted = quality == m.key, secondary = "${m.mb} MB$state", size = typo.title
+                ) { quality = m.key }
+            }
+            Rule(color = colors.fg)
+            Row(Modifier.fillMaxWidth()) {
+                Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.action_cancel), onClick = onDismiss) }
+                Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.transcribe), inverted = true) { activity.transcribe(item, language, quality); onDismiss() } }
+            }
+        }
+    }
+    if (picking) TextMenu(stringResource(R.string.language), Prompts.choices(Prefs.deviceLanguage()).map { code ->
+        MenuItem(languageLabel(code), secondary = if (code == language) "✓" else null) { language = code }
+    }, onDismiss = { picking = false })
 }

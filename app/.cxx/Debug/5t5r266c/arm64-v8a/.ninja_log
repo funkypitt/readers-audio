@@ -59,3 +59,7 @@
 14581	14618	1789115089382147725	/home/freedomfighter/code/readers-audio/app/build/intermediates/cxx/Debug/5t5r266c/obj/arm64-v8a/libwhisper_v8fp16_va.so	3e9e6d97a551d05d
 3859	15729	1789115090467192049	CMakeFiles/whisper.dir/whisper.cpp/src/whisper.cpp.o	32861c4408542939
 15729	15756	1789115090523194337	/home/freedomfighter/code/readers-audio/app/build/intermediates/cxx/Debug/5t5r266c/obj/arm64-v8a/libwhisper.so	d90c2ae3b374e809
+4	35	1789119403789370178	CMakeFiles/whisper_v8fp16_va.dir/jni.c.o	ecf48dd873abf047
+4	35	1789119403789370178	CMakeFiles/whisper.dir/jni.c.o	e3a6aca969138db
+35	95	1789119403847372547	/home/freedomfighter/code/readers-audio/app/build/intermediates/cxx/Debug/5t5r266c/obj/arm64-v8a/libwhisper_v8fp16_va.so	3e9e6d97a551d05d
+35	96	1789119403848372588	/home/freedomfighter/code/readers-audio/app/build/intermediates/cxx/Debug/5t5r266c/obj/arm64-v8a/libwhisper.so	d90c2ae3b374e809

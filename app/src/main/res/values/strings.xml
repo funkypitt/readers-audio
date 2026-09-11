@@ -49,4 +49,7 @@
     <string name="widget_name">Reader\'s Audio Player · last played</string>
     <string name="widget_desc">the last file played: ▶ resumes it where you stopped</string>
     <string name="widget_empty">nothing played yet</string>
+    <string name="quality_normal">normal quality</string>
+    <string name="quality_high">high quality (much slower)</string>
+    <string name="transcribe_hint">choose the language and the quality</string>
 </resources>

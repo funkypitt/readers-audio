@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.freedomfighter.readersaudio.transcribe.Transcriber
+import com.freedomfighter.readersaudio.whisper.Models
 import com.freedomfighter.readersaudio.whisper.WhisperLib
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * wake lock, with a progress notification that can stop it. Everything stays on the phone.
  */
 class TranscribeService : Service() {
-    private val queue = ConcurrentLinkedQueue<String>()
+    private data class Job(val id: String, val language: String, val model: String)
+    private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
     private var lock: PowerManager.WakeLock? = null
@@ -49,7 +51,10 @@ class TranscribeService : Service() {
         when (intent?.action) {
             ACTION_CANCEL -> { cancelled.set(true); queue.clear(); Live.waiting.clear(); WhisperLib.cancel() }
             else -> intent?.getStringExtra(EXTRA_ID)?.let { id ->
-                if (id != Live.id && id !in queue) { queue.add(id); Live.waiting.add(id) }
+                if (id != Live.id && queue.none { it.id == id }) {
+                    queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT))
+                    Live.waiting.add(id)
+                }
             }
         }
         if (!running) { running = true; scope.launch { work(); finish() } }
@@ -62,15 +67,15 @@ class TranscribeService : Service() {
         val ticker = scope.launch { while (isActive) { pushNotification(); delay(1500) } }
         try {
             while (!cancelled.get()) {
-                val id = queue.poll() ?: break
+                val job = queue.poll() ?: break
+                val id = job.id
                 Live.waiting.remove(id)
                 val item = app.library.get(id) ?: continue
                 Live.id = id; Live.phase = "transcribe"; Live.percent = 0
                 if (Live.errorId == id) { Live.errorId = ""; Live.error = "" }
-                val s = app.prefs.settings.value
                 try {
                     val text = withContext(Dispatchers.Default) {
-                        Transcriber.run(this@TranscribeService, item, s.language.ifBlank { null }, s.model,
+                        Transcriber.run(this@TranscribeService, item, job.language.ifBlank { null }, job.model,
                             { phase, pct -> Live.phase = phase; Live.percent = pct }, { cancelled.get() })
                     }
                     if (text != null && !cancelled.get()) {
@@ -131,6 +136,8 @@ class TranscribeService : Service() {
     companion object {
         const val ACTION_CANCEL = "com.freedomfighter.readersaudio.TRANSCRIBE_CANCEL"
         const val EXTRA_ID = "id"
+        const val EXTRA_LANGUAGE = "language"
+        const val EXTRA_MODEL = "model"
         private const val CHANNEL_ID = "transcription"
         private const val NOTIF_ID = 7
 
@@ -141,7 +148,8 @@ class TranscribeService : Service() {
             else -> ctx.getString(R.string.phase_waiting)
         }
 
-        fun start(ctx: Context, id: String) = ContextCompat.startForegroundService(ctx, Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id))
+        fun start(ctx: Context, id: String, language: String, model: String) = ContextCompat.startForegroundService(ctx,
+            Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language).putExtra(EXTRA_MODEL, model))
         fun cancel(ctx: Context) { if (Live.id.isNotBlank() || Live.waiting.isNotEmpty()) ContextCompat.startForegroundService(ctx, Intent(ctx, TranscribeService::class.java).setAction(ACTION_CANCEL)) }
     }
 }

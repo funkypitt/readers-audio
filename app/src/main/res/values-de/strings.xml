@@ -47,4 +47,7 @@
     <string name="widget_name">Reader\'s Audio Player · zuletzt gehört</string>
     <string name="widget_desc">die zuletzt gehörte Datei: ▶ spielt dort weiter, wo Sie aufgehört haben</string>
     <string name="widget_empty">noch nichts gehört</string>
+    <string name="quality_normal">normale Qualität</string>
+    <string name="quality_high">hohe Qualität (viel langsamer)</string>
+    <string name="transcribe_hint">Sprache und Qualität wählen</string>
 </resources>

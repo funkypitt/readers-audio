@@ -48,4 +48,7 @@
     <string name="widget_name">Reader\'s Audio Player · последнее</string>
     <string name="widget_desc">последний прослушанный файл: ▶ продолжает с места остановки</string>
     <string name="widget_empty">пока ничего не прослушано</string>
+    <string name="quality_normal">обычное качество</string>
+    <string name="quality_high">высокое качество (намного медленнее)</string>
+    <string name="transcribe_hint">выбрать язык и качество</string>
 </resources>

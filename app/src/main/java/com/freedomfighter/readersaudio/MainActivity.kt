@@ -196,7 +196,7 @@ class MainActivity : ComponentActivity() {
     fun setSpeed(f: Float) { app.prefs.setSpeed(f); controller?.setPlaybackSpeed(f) }
     fun stopPlayback() { controller?.sendCustomCommand(SessionCommand(PlaybackService.ACTION_STOP, Bundle.EMPTY), Bundle.EMPTY) }
     fun openFiles() = pickFiles.launch(arrayOf("audio/*"))
-    fun transcribe(item: Item) = TranscribeService.start(this, item.id)
+    fun transcribe(item: Item, language: String, model: String) = TranscribeService.start(this, item.id, language, model)
     fun cancelTranscription() = TranscribeService.cancel(this)
     fun remove(item: Item) { if (ui.mediaId == item.id) stopPlayback(); app.library.remove(item.id) }
 

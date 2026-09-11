@@ -19,7 +19,7 @@ data class Settings(
     /** Language spoken, for the transcription: the phone's language by default, "" = detect. */
     val language: String = Prefs.deviceLanguage(),
     /** whisper.cpp model: base, small, medium. */
-    val model: String = "small",
+    val model: String = "normal",
     val speed: Float = 1f
 )
 
@@ -37,7 +37,7 @@ class Prefs(context: Context) {
         align = enumOr(sp.getString("align", null), Align.LEFT),
         haptics = sp.getBoolean("haptics", true),
         language = sp.getString("language", deviceLanguage()) ?: deviceLanguage(),
-        model = sp.getString("model", "small") ?: "small",
+        model = sp.getString("model", "normal") ?: "normal",
         speed = sp.getFloat("speed", 1f)
     )
     private inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E =
