@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -66,16 +67,21 @@ class PlaybackService : MediaSessionService() {
             .setSeekForwardIncrementMs(10_000)
             .build()
         player.setPlaybackSpeed(app.prefs.settings.value.speed)
+        // The system media controls (Android 13+) only show a session's CUSTOM actions besides
+        // play/pause: buttons bound to player commands (seek back/forward) never appear there.
+        // So −5 s, +10 s and stop are all session commands, handled in onCustomCommand.
+        val back = SessionCommand(ACTION_BACK5, Bundle.EMPTY)
+        val fwd = SessionCommand(ACTION_FWD10, Bundle.EMPTY)
         val stop = SessionCommand(ACTION_STOP, Bundle.EMPTY)
         val layout = ImmutableList.of(
-            CommandButton.Builder().setDisplayName(getString(R.string.back5)).setIconResId(R.drawable.ic_replay_5).setPlayerCommand(Player.COMMAND_SEEK_BACK).build(),
-            CommandButton.Builder().setDisplayName(getString(R.string.fwd10)).setIconResId(R.drawable.ic_forward_10).setPlayerCommand(Player.COMMAND_SEEK_FORWARD).build(),
+            CommandButton.Builder().setDisplayName(getString(R.string.back5)).setIconResId(R.drawable.ic_replay_5).setSessionCommand(back).build(),
+            CommandButton.Builder().setDisplayName(getString(R.string.fwd10)).setIconResId(R.drawable.ic_forward_10).setSessionCommand(fwd).build(),
             CommandButton.Builder().setDisplayName(getString(R.string.stop)).setIconResId(R.drawable.ic_stop).setSessionCommand(stop).build()
         )
         session = MediaSession.Builder(this, player)
             .setSessionActivity(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_PLAYER), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
             .setCustomLayout(layout)
-            .setCallback(SessionCallback(stop))
+            .setCallback(SessionCallback(listOf(back, fwd, stop)))
             .build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build().also { it.setSmallIcon(R.drawable.ic_note) })
         player.addListener(object : Player.Listener {
@@ -153,9 +159,9 @@ class PlaybackService : MediaSessionService() {
         return m.buildUpon().setUri(Uri.parse(item.uri)).setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).build()).build()
     }
 
-    private inner class SessionCallback(private val stop: SessionCommand) : MediaSession.Callback {
+    private inner class SessionCallback(private val commands: List<SessionCommand>) : MediaSession.Callback {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(stop).build()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().apply { commands.forEach { add(it) } }.build()
             // No previous / next: their slots in the system media controls go to −5 s and +10 s.
             val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                 .remove(Player.COMMAND_SEEK_TO_PREVIOUS).remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
@@ -168,8 +174,37 @@ class PlaybackService : MediaSessionService() {
         }
 
         override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo, customCommand: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
-            if (customCommand.customAction == ACTION_STOP) stopPlayback()
+            when (customCommand.customAction) {
+                ACTION_BACK5 -> session.player.seekBack()
+                ACTION_FWD10 -> session.player.seekForward()
+                ACTION_STOP -> stopPlayback()
+            }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        /**
+         * The widget's ▶ arrives here as a media button. Media3 ignores play on an ended or idle
+         * player, and a media button starts this service in the foreground: if nothing then plays,
+         * Android kills the app after a few seconds. So an ended file starts again, an idle one is
+         * prepared, and an empty player loads the last file.
+         */
+        override fun onMediaButtonEvent(session: MediaSession, controllerInfo: MediaSession.ControllerInfo, intent: Intent): Boolean {
+            @Suppress("DEPRECATION")
+            val key = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT) ?: return false
+            if (key.action != KeyEvent.ACTION_DOWN) return false
+            if (key.keyCode != KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE && key.keyCode != KeyEvent.KEYCODE_MEDIA_PLAY) return false
+            val p = session.player
+            when {
+                p.mediaItemCount == 0 -> {
+                    val last = app.library.last() ?: return false
+                    val start = if (last.durationMs > 0 && last.positionMs > last.durationMs - 3_000) 0L else last.positionMs
+                    p.setMediaItem(resolve(mediaItem(last)), start); p.prepare(); p.play()
+                }
+                p.playbackState == Player.STATE_ENDED -> { p.seekTo(0); p.play() }
+                p.playbackState == Player.STATE_IDLE -> { p.prepare(); p.play() }
+                else -> return false
+            }
+            return true
         }
 
         override fun onAddMediaItems(mediaSession: MediaSession, controller: MediaSession.ControllerInfo, mediaItems: MutableList<MediaItem>): ListenableFuture<MutableList<MediaItem>> =
@@ -185,6 +220,8 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val ACTION_STOP = "com.freedomfighter.readersaudio.STOP"
+        const val ACTION_BACK5 = "com.freedomfighter.readersaudio.BACK5"
+        const val ACTION_FWD10 = "com.freedomfighter.readersaudio.FWD10"
         fun mediaItem(item: Item): MediaItem = MediaItem.Builder()
             .setMediaId(item.id)
             .setMediaMetadata(MediaMetadata.Builder().setTitle(item.title).build())
