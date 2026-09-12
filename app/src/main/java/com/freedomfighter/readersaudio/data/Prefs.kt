@@ -20,7 +20,9 @@ data class Settings(
     val language: String = Prefs.deviceLanguage(),
     /** whisper.cpp model: base, small, medium. */
     val model: String = "normal",
-    val speed: Float = 1f
+    val speed: Float = 1f,
+    /** Whether a transcription also gets the main points written on the phone. */
+    val summaryOnPhone: Boolean = false
 )
 
 class Prefs(context: Context) {
@@ -38,7 +40,8 @@ class Prefs(context: Context) {
         haptics = sp.getBoolean("haptics", true),
         language = sp.getString("language", deviceLanguage()) ?: deviceLanguage(),
         model = sp.getString("model", "normal") ?: "normal",
-        speed = sp.getFloat("speed", 1f)
+        speed = sp.getFloat("speed", 1f),
+        summaryOnPhone = sp.getBoolean("summary_on_phone", false)
     )
     private inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E =
         name?.let { runCatching { enumValueOf<E>(it) }.getOrNull() } ?: default
@@ -50,6 +53,7 @@ class Prefs(context: Context) {
     fun setLanguage(v: String) = sp.edit().putString("language", v.trim()).apply()
     fun setModel(v: String) = sp.edit().putString("model", v).apply()
     fun setSpeed(v: Float) = sp.edit().putFloat("speed", v).apply()
+    fun setSummaryOnPhone(v: Boolean) = sp.edit().putBoolean("summary_on_phone", v).apply()
     fun toggleTheme(systemIsDark: Boolean) {
         val dark = when (_settings.value.theme) { ThemeMode.DARK -> true; ThemeMode.LIGHT -> false; ThemeMode.SYSTEM -> systemIsDark }
         setTheme(if (dark) ThemeMode.LIGHT else ThemeMode.DARK)

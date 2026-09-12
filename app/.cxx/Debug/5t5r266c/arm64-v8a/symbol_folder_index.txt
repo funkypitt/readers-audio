@@ -1,1 +1,0 @@
-/home/freedomfighter/code/readers-audio/app/build/intermediates/cxx/Debug/5t5r266c/obj/arm64-v8a

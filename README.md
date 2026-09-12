@@ -4,7 +4,8 @@ A black-and-white, text-only audio player for Android, in the
 [Reader's](https://github.com/funkypitt/readers-launcher) family. Deliberately plain: the
 playback is AndroidX **Media3** (ExoPlayer + MediaSession), the standard engine, so the
 notification, lock screen, Bluetooth and headset buttons behave the way Android expects.
-The one addition is **transcription on the phone** with whisper.cpp.
+The one addition is **transcription on the phone** with whisper.cpp — and, if you want it,
+**the main points of what was said**, written on the phone too.
 
 * **A list**, last played first; each file resumes where it was left. "+ open audio files"
   picks files anywhere on the phone; "open with" and "share to" from any app work too.
@@ -20,7 +21,17 @@ The one addition is **transcription on the phone** with whisper.cpp.
   previous piece, so the text keeps full sentences, commas and capitals. Paragraphs break only
   where a sentence has ended, after a pause or past ~600 characters.
   The transcript is a plain `.txt` in **Documents/Transcriptions**, which any reader opens —
-  Reader's Books included. * **Share** the audio or the transcript to any app, and **save a copy to a folder…** straight
+  Reader's Books included.
+* **The main points**, an option in the same sheet, off until you ask for it. The first tap
+  fetches a three-billion parameter model (Qwen2.5 3B Instruct, Q4_K_M, 1.93 GB, once);
+  [llama.cpp](https://github.com/ggml-org/llama.cpp) is vendored beside whisper.cpp and runs it
+  on the processor alone. The transcript is read in pieces of about 900 words, each asked for its
+  points, and the notes are merged into eight; the instruction asks for one thing only, which is
+  what a model this size can actually obey. The points are written at the top of the same `.txt`,
+  above the transcript, so whatever you open or share carries them. A phone with less than about
+  6 GB of memory is not offered the option — it could not hold the model. The transcript is saved
+  **before** the summary is attempted, and any failure is silent: an hour of transcription is
+  never at the mercy of the points. * **Share** the audio or the transcript to any app, and **save a copy to a folder…** straight
   from the player, through the system's own folder picker — no file manager needed.
 * **Widget**: the last file played; ▶ resumes it where it stopped (Media3 playback
   resumption), the title opens the player.
@@ -35,7 +46,9 @@ export JAVA_HOME=/path/to/jdk-21
 
 minSdk 29 (transcripts are written to Documents through MediaStore, without a storage
 permission), targetSdk 34, NDK 27.1, CMake 3.22.1. whisper.cpp is vendored under
-`app/src/main/cpp/whisper.cpp` (MIT).
+`app/src/main/cpp/whisper.cpp` and llama.cpp under `app/src/main/cpp/llama.cpp` (both MIT).
+Each carries its own ggml and is built into its own library, hiding everything but its JNI entry
+points — that is the only reason two versions of ggml can live in one application.
 
 ## Licence
 

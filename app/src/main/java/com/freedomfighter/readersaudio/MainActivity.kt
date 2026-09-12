@@ -54,7 +54,7 @@ class PlayerUi {
 class MainActivity : ComponentActivity() {
     val nav = Nav()
     val ui = PlayerUi()
-    private val app get() = application as App
+    val app get() = application as App
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
     private var pendingPlay: Item? = null
@@ -196,7 +196,7 @@ class MainActivity : ComponentActivity() {
     fun setSpeed(f: Float) { app.prefs.setSpeed(f); controller?.setPlaybackSpeed(f) }
     fun stopPlayback() { controller?.sendCustomCommand(SessionCommand(PlaybackService.ACTION_STOP, Bundle.EMPTY), Bundle.EMPTY) }
     fun openFiles() = pickFiles.launch(arrayOf("audio/*"))
-    fun transcribe(item: Item, language: String, model: String) = TranscribeService.start(this, item.id, language, model)
+    fun transcribe(item: Item, language: String, model: String, summary: Boolean) = TranscribeService.start(this, item.id, language, model, summary)
     fun cancelTranscription() = TranscribeService.cancel(this)
     fun remove(item: Item) { if (ui.mediaId == item.id) stopPlayback(); app.library.remove(item.id) }
 

@@ -51,4 +51,7 @@
     <string name="quality_normal">обычное качество</string>
     <string name="quality_high">высокое качество (намного медленнее)</string>
     <string name="transcribe_hint">выбрать язык и качество</string>
+    <string name="phase_summary">записываю основные мысли, %d %%</string>
+    <string name="summary_on_phone">и основные мысли</string>
+    <string name="summary_title">основные мысли</string>
 </resources>

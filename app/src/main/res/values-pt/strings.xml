@@ -50,4 +50,7 @@
     <string name="quality_normal">qualidade normal</string>
     <string name="quality_high">alta qualidade (muito mais lento)</string>
     <string name="transcribe_hint">escolher a língua e a qualidade</string>
+    <string name="phase_summary">a escrever os pontos principais, %d %%</string>
+    <string name="summary_on_phone">também os pontos principais</string>
+    <string name="summary_title">pontos principais</string>
 </resources>

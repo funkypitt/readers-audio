@@ -17,6 +17,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.freedomfighter.readersaudio.summary.Summariser
+import com.freedomfighter.readersaudio.summary.SummaryModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
 import com.freedomfighter.readersaudio.whisper.Models
 import com.freedomfighter.readersaudio.whisper.WhisperLib
@@ -36,7 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * wake lock, with a progress notification that can stop it. Everything stays on the phone.
  */
 class TranscribeService : Service() {
-    private data class Job(val id: String, val language: String, val model: String)
+    private data class Job(val id: String, val language: String, val model: String, val summary: Boolean)
     private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
@@ -52,7 +54,8 @@ class TranscribeService : Service() {
             ACTION_CANCEL -> { cancelled.set(true); queue.clear(); Live.waiting.clear(); WhisperLib.cancel() }
             else -> intent?.getStringExtra(EXTRA_ID)?.let { id ->
                 if (id != Live.id && queue.none { it.id == id }) {
-                    queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT))
+                    queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT,
+                        intent.getBooleanExtra(EXTRA_SUMMARY, false)))
                     Live.waiting.add(id)
                 }
             }
@@ -79,9 +82,18 @@ class TranscribeService : Service() {
                             { phase, pct -> Live.phase = phase; Live.percent = pct }, { cancelled.get() })
                     }
                     if (text != null && !cancelled.get()) {
+                        // The transcript is saved before anything else is attempted on it: an hour
+                        // of work must not hang on a summary that may be interrupted.
                         Live.phase = "save"
                         val uri = withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, text) }
                         app.library.update(id) { it.copy(transcriptUri = uri.toString()) }
+                        if (job.summary && !cancelled.get()) {
+                            val whole = withContext(Dispatchers.Default) { withPoints(text, job.language) }
+                            if (whole != text && !cancelled.get()) {
+                                Live.phase = "save"
+                                withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, whole) }
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
@@ -92,6 +104,27 @@ class TranscribeService : Service() {
             Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear()
             runCatching { if (lock?.isHeld == true) lock?.release() }
         }
+    }
+
+    /**
+     * The transcript with its main points above it, when a small model on the phone can write
+     * them. One file holds both, because the transcript is what leaves the app — opened in a
+     * reader, shared, filed away — and a summary that lived somewhere else would be lost.
+     *
+     * Every failure is silent and returns the transcript untouched: the summary is a bonus,
+     * never a reason to lose an hour of transcription.
+     */
+    private fun withPoints(text: String, language: String): String {
+        if (!SummaryModel.isDownloaded(this) || !SummaryModel.roomRightNow(this)) return text
+        Live.phase = "summary"; Live.percent = 0
+        val points = Summariser.summarise(
+            model = SummaryModel.file(this),
+            transcript = text,
+            language = language.ifBlank { app.prefs.settings.value.language },
+            onProgress = { Live.percent = it.coerceIn(0, 99) },
+            cancelled = { cancelled.get() },
+        ) ?: return text
+        return getString(R.string.summary_title).uppercase() + "\n\n" + points + "\n\n\n" + text
     }
 
     private fun finish() {
@@ -138,18 +171,21 @@ class TranscribeService : Service() {
         const val EXTRA_ID = "id"
         const val EXTRA_LANGUAGE = "language"
         const val EXTRA_MODEL = "model"
+        const val EXTRA_SUMMARY = "summary"
         private const val CHANNEL_ID = "transcription"
         private const val NOTIF_ID = 7
 
         fun phaseLabel(ctx: Context, phase: String, percent: Int): String = when (phase) {
             "model" -> ctx.getString(R.string.phase_model, percent)
             "transcribe" -> ctx.getString(R.string.phase_transcribe, percent)
+            "summary" -> ctx.getString(R.string.phase_summary, percent)
             "save" -> ctx.getString(R.string.phase_save)
             else -> ctx.getString(R.string.phase_waiting)
         }
 
-        fun start(ctx: Context, id: String, language: String, model: String) = ContextCompat.startForegroundService(ctx,
-            Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language).putExtra(EXTRA_MODEL, model))
+        fun start(ctx: Context, id: String, language: String, model: String, summary: Boolean) = ContextCompat.startForegroundService(ctx,
+            Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language).putExtra(EXTRA_MODEL, model)
+                .putExtra(EXTRA_SUMMARY, summary))
         fun cancel(ctx: Context) { if (Live.id.isNotBlank() || Live.waiting.isNotEmpty()) ContextCompat.startForegroundService(ctx, Intent(ctx, TranscribeService::class.java).setAction(ACTION_CANCEL)) }
     }
 }

@@ -1,3 +1,0 @@
-/home/freedomfighter/code/readers-audio/app/.cxx/Debug/5t5r266c/x86_64/CMakeFiles/whisper.dir
-/home/freedomfighter/code/readers-audio/app/.cxx/Debug/5t5r266c/x86_64/CMakeFiles/edit_cache.dir
-/home/freedomfighter/code/readers-audio/app/.cxx/Debug/5t5r266c/x86_64/CMakeFiles/rebuild_cache.dir

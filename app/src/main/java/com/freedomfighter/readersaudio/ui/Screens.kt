@@ -47,6 +47,7 @@ import com.freedomfighter.readersaudio.data.Item
 import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.data.TextSize
 import com.freedomfighter.readersaudio.data.clock
+import com.freedomfighter.readersaudio.summary.SummaryModel
 import com.freedomfighter.readersaudio.whisper.Models
 import com.freedomfighter.readersaudio.whisper.Prompts
 import java.util.Locale
@@ -302,6 +303,12 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
     val typo = LocalTypo.current
     var language by remember { mutableStateOf(Prefs.deviceLanguage()) }
     var quality by remember { mutableStateOf(Models.DEFAULT) }
+    // The main points: remembered from last time, and only offered to a phone that can hold the
+    // two gigabytes the model needs. The first tap fetches it; the choice applies to this file.
+    val roomy = remember { SummaryModel.phoneCanHoldIt(context) }
+    val modelDownloading by SummaryModel.downloading.collectAsState()
+    val summaryHere = remember(modelDownloading) { SummaryModel.isDownloaded(context) }
+    var points by remember { mutableStateOf(activity.app.prefs.settings.value.summaryOnPhone && summaryHere) }
     var picking by remember { mutableStateOf(false) }
     val downloading by Models.downloading.collectAsState()
     BackHandler(onBack = onDismiss)
@@ -325,10 +332,25 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                     inverted = quality == m.key, secondary = "${m.mb} MB$state", size = typo.title
                 ) { quality = m.key }
             }
+            if (roomy) {
+                Rule(Modifier.padding(vertical = 4.dp))
+                val pointsState = when {
+                    modelDownloading >= 0 -> " · $modelDownloading%"
+                    !summaryHere -> " · " + stringResource(R.string.model_not_yet)
+                    else -> ""
+                }
+                TextRow(
+                    stringResource(R.string.summary_on_phone), inverted = points && summaryHere,
+                    secondary = "${SummaryModel.MB} MB$pointsState", size = typo.title,
+                ) {
+                    if (summaryHere) { points = !points; activity.app.prefs.setSummaryOnPhone(points) }
+                    else activity.app.fetchSummaryModel()
+                }
+            }
             Rule(color = colors.fg)
             Row(Modifier.fillMaxWidth()) {
                 Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.action_cancel), onClick = onDismiss) }
-                Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.transcribe), inverted = true) { activity.transcribe(item, language, quality); onDismiss() } }
+                Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.transcribe), inverted = true) { activity.transcribe(item, language, quality, points && summaryHere); onDismiss() } }
             }
         }
     }
