@@ -40,15 +40,17 @@ The one addition is **transcription on the phone** with whisper.cpp — and, if 
 ## Building
 
 ```
+git clone --recursive https://github.com/funkypitt/readers-audio.git   # or: git submodule update --init
 export JAVA_HOME=/path/to/jdk-21
 ./gradlew assembleDebug
 ```
 
 minSdk 29 (transcripts are written to Documents through MediaStore, without a storage
-permission), targetSdk 34, NDK 27.1, CMake 3.22.1. whisper.cpp is vendored under
-`app/src/main/cpp/whisper.cpp` and llama.cpp under `app/src/main/cpp/llama.cpp` (both MIT).
-Each carries its own ggml and is built into its own library, hiding everything but its JNI entry
-points — that is the only reason two versions of ggml can live in one application.
+permission), targetSdk 34, NDK 27.1, CMake 3.22.1. Everything that listens and summarises —
+whisper.cpp, llama.cpp, the models and the code around them — lives in the
+[readers-speech](https://github.com/funkypitt/readers-speech) module, a git submodule at `speech/`
+shared with Reader's Recorder. The two apps also share the model files themselves: one downloaded
+by either is read by the other through a content provider, so the two gigabytes exist once.
 
 ## Licence
 

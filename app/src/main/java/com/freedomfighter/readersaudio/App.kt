@@ -3,7 +3,7 @@ package com.freedomfighter.readersaudio
 import android.app.Application
 import com.freedomfighter.readersaudio.data.Library
 import com.freedomfighter.readersaudio.data.Prefs
-import com.freedomfighter.readersaudio.summary.SummaryModel
+import com.freedomfighter.readers.speech.summary.SummaryModel
 import com.freedomfighter.readersaudio.widget.LastWidgets
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -16,7 +16,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate(); prefs; library
-        Thread { runCatching { com.freedomfighter.readersaudio.whisper.Models.cleanup(this) } }.start()
+        Thread { runCatching { com.freedomfighter.readers.speech.whisper.Models.cleanup(this) } }.start()
     }
 
     /**

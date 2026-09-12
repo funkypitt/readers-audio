@@ -31,6 +31,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.freedomfighter.readersaudio.data.Item
 import com.freedomfighter.readersaudio.data.Prefs
+import com.freedomfighter.readersaudio.transcribe.Transcriber
 import com.freedomfighter.readersaudio.ui.ListScreen
 import com.freedomfighter.readersaudio.ui.LocalColors
 import com.freedomfighter.readersaudio.ui.Nav
@@ -200,10 +201,11 @@ class MainActivity : ComponentActivity() {
     fun stopPlayback() { controller?.sendCustomCommand(SessionCommand(PlaybackService.ACTION_STOP, Bundle.EMPTY), Bundle.EMPTY) }
     fun openFiles() = pickFiles.launch(arrayOf("audio/*"))
     fun transcribe(item: Item, language: String, model: String, summary: Boolean) = TranscribeService.start(this, item.id, language, model, summary)
-    /** The main points of a transcript already saved: no audio is read again. */
-    fun summarise(item: Item) = TranscribeService.points(this, item.id, Prefs.deviceLanguage())
+    /** The main points of a transcript already saved, no audio read again — in the language it was transcribed in unless told otherwise. */
+    fun summarise(item: Item, language: String? = null) =
+        TranscribeService.points(this, item.id, (language ?: item.language).ifBlank { Prefs.deviceLanguage() })
     fun cancelTranscription() = TranscribeService.cancel(this)
-    fun remove(item: Item) { if (ui.mediaId == item.id) stopPlayback(); app.library.remove(item.id) }
+    fun remove(item: Item) { if (ui.mediaId == item.id) stopPlayback(); app.library.remove(item.id); Transcriber.forget(this, item.id) }
 
     // ---- sharing and copies ----
 

@@ -12,21 +12,20 @@ android {
         applicationId = "com.freedomfighter.readersaudio"
         minSdk = 29
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.3.3"
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
-        externalNativeBuild { cmake { arguments += listOf("-DGGML_NATIVE=OFF", "-DANDROID_STL=c++_static") } }
+        versionCode = 9
+        versionName = "1.4.0"
     }
 
     buildTypes { release { isMinifyEnabled = false } }
+    // Named here as well as in :speech: this is where the native libraries get stripped on packaging.
     ndkVersion = "27.1.12297006"
-    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
 }
 
 dependencies {
+    implementation(project(":speech"))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

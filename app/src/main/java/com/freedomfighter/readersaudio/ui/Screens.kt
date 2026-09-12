@@ -47,10 +47,10 @@ import com.freedomfighter.readersaudio.data.Item
 import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.data.TextSize
 import com.freedomfighter.readersaudio.data.clock
-import com.freedomfighter.readersaudio.summary.SummaryModel
+import com.freedomfighter.readers.speech.summary.SummaryModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
-import com.freedomfighter.readersaudio.whisper.Models
-import com.freedomfighter.readersaudio.whisper.Prompts
+import com.freedomfighter.readers.speech.whisper.Models
+import com.freedomfighter.readers.speech.whisper.Prompts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -70,6 +70,9 @@ class Nav {
     fun pop() { if (stack.size > 1) stack.removeAt(stack.size - 1) }
     fun home() { while (stack.size > 1) stack.removeAt(stack.size - 1) }
 }
+
+/** The sibling app that holds a model, by name: the two share their models by file descriptor. */
+fun siblingName(pkg: String): String = if (pkg.endsWith("readersrecorder")) "Recorder" else "Audio Player"
 
 fun speedLabel(f: Float): String = (if (f == f.toInt().toFloat()) f.toInt().toString() else f.toString()) + "×"
 
@@ -189,9 +192,7 @@ private fun hasPoints(item: Item): Boolean {
     val app = context.applicationContext as App
     LaunchedEffect(item.id, item.transcriptUri, item.hasPoints) {
         if (!item.hasPoints && item.transcriptUri.isNotBlank()) {
-            val found = withContext(Dispatchers.IO) {
-                Transcriber.read(context, item)?.let { Transcriber.pointsIn(context, it) } != null
-            }
+            val found = withContext(Dispatchers.IO) { Transcriber.points(context, item) != null }
             if (found) app.library.update(item.id) { it.copy(hasPoints = true) }
         }
     }
@@ -229,8 +230,9 @@ fun PointsScreen(nav: Nav, app: App, activity: MainActivity, id: String) {
     if (item == null) { nav.pop(); return }
     var points by remember(item.transcriptUri, item.hasPoints) { mutableStateOf<String?>(null) }
     var reading by remember(item.transcriptUri, item.hasPoints) { mutableStateOf(true) }
+    var picking by remember { mutableStateOf(false) }
     LaunchedEffect(item.transcriptUri, item.hasPoints) {
-        points = withContext(Dispatchers.IO) { Transcriber.read(context, item)?.let { Transcriber.pointsIn(context, it) } }
+        points = withContext(Dispatchers.IO) { Transcriber.points(context, item) }
         reading = false
     }
     Page {
@@ -253,9 +255,18 @@ fun PointsScreen(nav: Nav, app: App, activity: MainActivity, id: String) {
             val (roomy, here, says) = pointsState()
             TextRow(
                 stringResource(R.string.points_again), secondary = if (here) null else says, size = typo.title,
-                onClick = if (!roomy) null else ({ if (here) { activity.summarise(item); nav.pop() } else activity.app.fetchSummaryModel() }),
+                onClick = if (!roomy) null else ({ if (here) picking = true else activity.app.fetchSummaryModel() }),
             )
             Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
+        }
+        // The language of the points: the one the file was transcribed in, unless another is wanted
+        // — a talk in English can be given French points. "Detected" means nothing here, so it is
+        // left out of the list.
+        if (picking) {
+            val current = item.language.ifBlank { Prefs.deviceLanguage() }
+            TextMenu(stringResource(R.string.language), Prompts.choices(Prefs.deviceLanguage()).filter { it.isNotBlank() }.map { code ->
+                MenuItem(languageLabel(code), secondary = if (code == current) "✓" else null) { activity.summarise(item, code); nav.pop() }
+            }, onDismiss = { picking = false })
         }
     }
 }
@@ -449,6 +460,7 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
     val modelDownloading by SummaryModel.downloading.collectAsState()
     val modelFailed by activity.app.modelError.collectAsState()
     val summaryHere = remember(modelDownloading) { SummaryModel.isDownloaded(context) }
+    val sharedFrom = remember(modelDownloading) { SummaryModel.sharedFrom(context) }
     val modelPart = remember(modelDownloading) { SummaryModel.partPercent(context) }
     var points by remember { mutableStateOf(activity.app.prefs.settings.value.summaryOnPhone && summaryHere) }
     var picking by remember { mutableStateOf(false) }
@@ -485,7 +497,8 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                 }
                 TextRow(
                     stringResource(R.string.summary_on_phone), inverted = points && summaryHere,
-                    secondary = "${SummaryModel.MB} MB$pointsState", size = typo.title,
+                    secondary = if (sharedFrom != null) stringResource(R.string.model_shared, siblingName(sharedFrom)) else "${SummaryModel.MB} MB$pointsState",
+                    size = typo.title,
                 ) {
                     if (summaryHere) { points = !points; activity.app.prefs.setSummaryOnPhone(points) }
                     else activity.app.fetchSummaryModel()

@@ -18,11 +18,11 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.freedomfighter.readersaudio.data.Item
-import com.freedomfighter.readersaudio.summary.Summariser
-import com.freedomfighter.readersaudio.summary.SummaryModel
+import com.freedomfighter.readers.speech.summary.Summariser
+import com.freedomfighter.readers.speech.summary.SummaryModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
-import com.freedomfighter.readersaudio.whisper.Models
-import com.freedomfighter.readersaudio.whisper.WhisperLib
+import com.freedomfighter.readers.speech.whisper.Models
+import com.freedomfighter.readers.speech.whisper.WhisperLib
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -47,6 +47,7 @@ class TranscribeService : Service() {
     private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
+    private var lastStartId = 0
     private var lock: PowerManager.WakeLock? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val app get() = application as App
@@ -54,9 +55,14 @@ class TranscribeService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         goForeground()
         when (intent?.action) {
-            ACTION_CANCEL -> { cancelled.set(true); queue.clear(); Live.waiting.clear(); Live.waitingPoints.clear(); WhisperLib.cancel() }
+            ACTION_CANCEL -> {
+                cancelled.set(true); queue.clear(); Live.waiting.clear(); Live.waitingPoints.clear(); WhisperLib.cancel()
+                if (!running) finish()
+                return START_NOT_STICKY
+            }
             ACTION_FETCH_MODEL -> if (queue.none { it.fetchModel }) queue.add(Job("", "", Models.DEFAULT, false, fetchModel = true))
             else -> intent?.getStringExtra(EXTRA_ID)?.let { id ->
                 if (id != Live.id && queue.none { it.id == id }) {
@@ -67,7 +73,9 @@ class TranscribeService : Service() {
                 }
             }
         }
-        if (!running) { running = true; scope.launch { work(); finish() } }
+        // A stop used to leave `cancelled` set for the life of the instance, so a job asked for right
+        // after it was queued, shown as waiting, and dropped without a word. A new job starts clean.
+        if (!running) { running = true; cancelled.set(false); scope.launch { work(); finish() } }
         return START_NOT_STICKY
     }
 
@@ -94,14 +102,17 @@ class TranscribeService : Service() {
                         // The transcript is saved before anything else is attempted on it: an hour
                         // of work must not hang on a summary that may be interrupted.
                         Live.phase = "save"
-                        val uri = withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, text) }
-                        app.library.update(id) { it.copy(transcriptUri = uri.toString(), hasPoints = false) }
+                        val uri = withContext(Dispatchers.IO) {
+                            Transcriber.textFile(this@TranscribeService, id).writeText(text)
+                            Transcriber.pointsFile(this@TranscribeService, id).delete()
+                            Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, Transcriber.render(this@TranscribeService, null, text))
+                        }
+                        app.library.update(id) { it.copy(transcriptUri = uri.toString(), hasPoints = false, language = job.language) }
                         if (job.summary && !cancelled.get()) {
-                            val whole = withContext(Dispatchers.Default) { withPoints(text, job.language) }
-                            if (whole != text && !cancelled.get()) {
+                            val points = withContext(Dispatchers.Default) { writePoints(text, job.language) }
+                            if (points != null && !cancelled.get()) {
                                 Live.phase = "save"
-                                withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, whole) }
-                                app.library.update(id) { it.copy(hasPoints = true) }
+                                withContext(Dispatchers.IO) { keepPoints(id, points, text) }
                             }
                         }
                     }
@@ -113,6 +124,7 @@ class TranscribeService : Service() {
             ticker.cancel()
             Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear(); Live.waitingPoints.clear()
             runCatching { if (lock?.isHeld == true) lock?.release() }
+            running = false
         }
     }
 
@@ -149,49 +161,56 @@ class TranscribeService : Service() {
     private suspend fun points(item: Item, language: String) {
         val id = item.id
         try {
-            val saved = withContext(Dispatchers.IO) { Transcriber.read(this@TranscribeService, item) }
-            if (saved == null) {
-                app.library.update(id) { it.copy(transcriptUri = "") }
+            val text = withContext(Dispatchers.IO) { Transcriber.text(this@TranscribeService, item) }
+            if (text == null) {
+                app.library.update(id) { it.copy(transcriptUri = "", hasPoints = false) }
                 Live.errorId = id; Live.error = getString(R.string.transcript_gone)
                 return
             }
-            val plain = Transcriber.withoutPoints(this, saved)
-            val whole = withContext(Dispatchers.Default) { withPoints(plain, language) }
+            val points = withContext(Dispatchers.Default) { writePoints(text, language) }
             if (cancelled.get()) return
-            if (whole == plain) { Live.errorId = id; Live.error = getString(R.string.summary_failed); return }
+            if (points == null) { Live.errorId = id; Live.error = getString(R.string.summary_failed); return }
             Live.phase = "save"
-            withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, whole) }
-            app.library.update(id) { it.copy(hasPoints = true) }
+            withContext(Dispatchers.IO) { keepPoints(id, points, text) }
         } catch (e: Exception) {
             if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
         }
     }
 
     /**
-     * The transcript with its main points above it, when a small model on the phone can write
-     * them. One file holds both, because the transcript is what leaves the app — opened in a
-     * reader, shared, filed away — and a summary that lived somewhere else would be lost.
-     *
-     * Every failure is silent and returns the transcript untouched: the summary is a bonus,
+     * The main points of [text], when a small model on the phone can write them: the theme in two
+     * sentences, then the points. Null on any failure, and silently so — the summary is a bonus,
      * never a reason to lose an hour of transcription.
      */
-    private fun withPoints(text: String, language: String): String {
-        if (!SummaryModel.isDownloaded(this) || !SummaryModel.roomRightNow(this)) return text
+    private fun writePoints(text: String, language: String): String? {
+        if (!SummaryModel.roomRightNow(this)) return null
+        val handle = SummaryModel.open(this) ?: return null
         Live.phase = "summary"; Live.percent = 0
-        val points = Summariser.summarise(
-            model = SummaryModel.file(this),
-            transcript = text,
-            language = language.ifBlank { app.prefs.settings.value.language },
-            onProgress = { Live.percent = it.coerceIn(0, 99) },
-            cancelled = { cancelled.get() },
-        ) ?: return text
-        return getString(R.string.summary_title).uppercase() + "\n\n" + points + "\n\n\n" + text
+        return handle.use {
+            Summariser.summarise(
+                modelPath = it.path,
+                transcript = text,
+                language = language.ifBlank { app.prefs.settings.value.language },
+                onProgress = { p -> Live.percent = p.coerceIn(0, 99) },
+                cancelled = { cancelled.get() },
+            )
+        }
+    }
+
+    /** The points kept in their own file, the exported .txt rendered again with them at its head. */
+    private fun keepPoints(id: String, points: String, text: String) {
+        Transcriber.pointsFile(this, id).writeText(points)
+        val item = app.library.get(id) ?: return
+        // The exported file may have been deleted or moved since: save() then creates a new one,
+        // and the library must point at that one.
+        val uri = Transcriber.save(this, item, Transcriber.render(this, points, text))
+        app.library.update(id) { it.copy(hasPoints = true, transcriptUri = uri.toString()) }
     }
 
     private fun finish() {
-        running = false
+        if (running) return   // a start that arrived as the loop was ending has relaunched it
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        stopSelfResult(lastStartId)
     }
 
     override fun onDestroy() { scope.cancel(); runCatching { if (lock?.isHeld == true) lock?.release() }; super.onDestroy() }

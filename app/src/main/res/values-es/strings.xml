@@ -36,6 +36,7 @@
     <string name="language_auto">detectado</string>
     <string name="model">modelo de transcripción (más grande = mejor, más lento)</string>
     <string name="model_not_yet">se descarga al primer uso</string>
+    <string name="model_shared">compartido con %s</string>
     <string name="model_resume">%d%% ya descargado · toca para continuar</string>
     <string name="about">reproduce archivos de audio y los transcribe en el teléfono; nada sale de él</string>
     <string name="transcripts_hint">Las transcripciones son archivos .txt simples en Documents/Transcriptions: cualquier lector los abre, Reader\'s Books incluido.</string>
