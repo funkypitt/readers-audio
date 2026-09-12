@@ -54,6 +54,27 @@ object Transcriber {
         MediaMetadataRetriever().use { it.setDataSource(ctx, uri); it.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong() }
     }.getOrDefault(0L)
 
+    /** The saved transcript, or null when the file is gone. */
+    fun read(ctx: Context, item: Item): String? = runCatching {
+        ctx.contentResolver.openInputStream(Uri.parse(item.transcriptUri))!!.use { String(it.readBytes(), Charsets.UTF_8) }
+    }.getOrNull()
+
+    private fun head(ctx: Context) = ctx.getString(R.string.summary_title).uppercase()
+
+    /** The main points written at the head of [text], or null when there are none. */
+    fun pointsIn(ctx: Context, text: String): String? {
+        if (!text.startsWith(head(ctx))) return null
+        val cut = text.indexOf("\n\n\n")
+        return (if (cut < 0) text else text.substring(0, cut)).removePrefix(head(ctx)).trim().ifBlank { null }
+    }
+
+    /** [text] without a block of points written by an earlier run. */
+    fun withoutPoints(ctx: Context, text: String): String {
+        if (!text.startsWith(head(ctx))) return text
+        val cut = text.indexOf("\n\n\n")
+        return if (cut < 0) text else text.substring(cut + 3)
+    }
+
     /**
      * Save as Documents/Transcriptions/<title>.txt through MediaStore, so any reader opens it;
      * a second transcription of the same file overwrites the first.

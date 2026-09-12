@@ -8,7 +8,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.compose.runtime.getValue
@@ -96,12 +95,13 @@ class TranscribeService : Service() {
                         // of work must not hang on a summary that may be interrupted.
                         Live.phase = "save"
                         val uri = withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, text) }
-                        app.library.update(id) { it.copy(transcriptUri = uri.toString()) }
+                        app.library.update(id) { it.copy(transcriptUri = uri.toString(), hasPoints = false) }
                         if (job.summary && !cancelled.get()) {
                             val whole = withContext(Dispatchers.Default) { withPoints(text, job.language) }
                             if (whole != text && !cancelled.get()) {
                                 Live.phase = "save"
                                 withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, whole) }
+                                app.library.update(id) { it.copy(hasPoints = true) }
                             }
                         }
                     }
@@ -149,32 +149,22 @@ class TranscribeService : Service() {
     private suspend fun points(item: Item, language: String) {
         val id = item.id
         try {
-            val saved = withContext(Dispatchers.IO) { readTranscript(item) }
+            val saved = withContext(Dispatchers.IO) { Transcriber.read(this@TranscribeService, item) }
             if (saved == null) {
                 app.library.update(id) { it.copy(transcriptUri = "") }
                 Live.errorId = id; Live.error = getString(R.string.transcript_gone)
                 return
             }
-            val plain = withoutPoints(saved)
+            val plain = Transcriber.withoutPoints(this, saved)
             val whole = withContext(Dispatchers.Default) { withPoints(plain, language) }
             if (cancelled.get()) return
             if (whole == plain) { Live.errorId = id; Live.error = getString(R.string.summary_failed); return }
             Live.phase = "save"
             withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, whole) }
+            app.library.update(id) { it.copy(hasPoints = true) }
         } catch (e: Exception) {
             if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
         }
-    }
-
-    private fun readTranscript(item: Item): String? = runCatching {
-        contentResolver.openInputStream(Uri.parse(item.transcriptUri))!!.use { String(it.readBytes(), Charsets.UTF_8) }
-    }.getOrNull()
-
-    /** The transcript alone: a block of points written by an earlier run is dropped. */
-    private fun withoutPoints(text: String): String {
-        if (!text.startsWith(getString(R.string.summary_title).uppercase())) return text
-        val cut = text.indexOf("\n\n\n")
-        return if (cut < 0) text else text.substring(cut + 3)
     }
 
     /**

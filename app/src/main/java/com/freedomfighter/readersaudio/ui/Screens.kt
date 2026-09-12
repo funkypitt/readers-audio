@@ -48,14 +48,19 @@ import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.data.TextSize
 import com.freedomfighter.readersaudio.data.clock
 import com.freedomfighter.readersaudio.summary.SummaryModel
+import com.freedomfighter.readersaudio.transcribe.Transcriber
 import com.freedomfighter.readersaudio.whisper.Models
 import com.freedomfighter.readersaudio.whisper.Prompts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 sealed class Screen {
     data object List : Screen()
     data object Player : Screen()
     data object Settings : Screen()
+    /** The main points of one file, read back from the head of its transcript. */
+    data class Points(val id: String) : Screen()
 }
 
 class Nav {
@@ -126,7 +131,7 @@ fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit
         else add(MenuItem(stringResource(if (hasTranscript) R.string.transcribe_again else R.string.transcribe)) { onTranscribe(item) })
         add(MenuItem(stringResource(R.string.share_audio)) { activity.shareAudio(item) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.share_transcript)) { activity.shareTranscript(item) })
-        if (hasTranscript && !busy) add(pointsMenuItem(item, activity))
+        if (hasTranscript && !busy) add(pointsMenuItem(item, activity, nav))
         add(MenuItem(stringResource(R.string.save_copy)) { activity.saveCopy(item) })
         if (inPlayer) add(MenuItem(stringResource(R.string.stop)) { activity.stopPlayback(); nav.pop() })
         else add(MenuItem(stringResource(R.string.remove)) { activity.remove(item) })
@@ -163,20 +168,96 @@ private fun pointsState(): Triple<Boolean, Boolean, String> {
  * transcribing the whole file again, which for an hour of audio nobody will do.
  */
 @Composable
-private fun pointsMenuItem(item: Item, activity: MainActivity): MenuItem {
+private fun pointsMenuItem(item: Item, activity: MainActivity, nav: Nav): MenuItem {
+    if (hasPoints(item)) return MenuItem(stringResource(R.string.summary_now), secondary = stringResource(R.string.summary_ready)) {
+        nav.push(Screen.Points(item.id))
+    }
     val (roomy, here, says) = pointsState()
     return MenuItem(stringResource(R.string.summary_now), secondary = says) {
         if (!roomy) Unit else if (here) activity.summarise(item) else activity.app.fetchSummaryModel()
     }
 }
 
+/**
+ * Whether the transcript already carries its points. A transcript written before the app kept
+ * that flag is read once and the flag set, so points already there are shown rather than offered
+ * to be written all over again.
+ */
 @Composable
-private fun PointsRow(item: Item, activity: MainActivity) {
+private fun hasPoints(item: Item): Boolean {
+    val context = LocalContext.current
+    val app = context.applicationContext as App
+    LaunchedEffect(item.id, item.transcriptUri, item.hasPoints) {
+        if (!item.hasPoints && item.transcriptUri.isNotBlank()) {
+            val found = withContext(Dispatchers.IO) {
+                Transcriber.read(context, item)?.let { Transcriber.pointsIn(context, it) } != null
+            }
+            if (found) app.library.update(item.id) { it.copy(hasPoints = true) }
+        }
+    }
+    return item.hasPoints
+}
+
+@Composable
+private fun PointsRow(item: Item, nav: Nav) {
+    val activity = LocalContext.current as MainActivity
+    if (hasPoints(item)) {
+        TextRow(stringResource(R.string.summary_now), secondary = stringResource(R.string.summary_ready), size = LocalTypo.current.title) {
+            nav.push(Screen.Points(item.id))
+        }
+        return
+    }
     val (roomy, here, says) = pointsState()
     TextRow(
         stringResource(R.string.summary_now), secondary = says, size = LocalTypo.current.title,
         onClick = if (!roomy) null else ({ if (here) activity.summarise(item) else activity.app.fetchSummaryModel() }),
     )
+}
+
+/**
+ * The main points, read back from the head of the transcript. Without this the row could only
+ * offer to write them again: tapping it to see what one had waited for started the whole thing
+ * over, which is exactly what happened to the user.
+ */
+@Composable
+fun PointsScreen(nav: Nav, app: App, activity: MainActivity, id: String) {
+    val context = LocalContext.current
+    val colors = LocalColors.current
+    val typo = LocalTypo.current
+    val all by app.library.items.collectAsState()
+    val item = all.firstOrNull { it.id == id }
+    if (item == null) { nav.pop(); return }
+    var points by remember(item.transcriptUri, item.hasPoints) { mutableStateOf<String?>(null) }
+    var reading by remember(item.transcriptUri, item.hasPoints) { mutableStateOf(true) }
+    LaunchedEffect(item.transcriptUri, item.hasPoints) {
+        points = withContext(Dispatchers.IO) { Transcriber.read(context, item)?.let { Transcriber.pointsIn(context, it) } }
+        reading = false
+    }
+    Page {
+        Column(Modifier.fillMaxSize()) {
+            ScreenTitle(stringResource(R.string.summary_now), onBack = { nav.pop() })
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                Small(item.title, Modifier.padding(horizontal = rowPadH).padding(top = 12.dp), maxLines = 2)
+                val text = points
+                when {
+                    reading -> Unit
+                    text != null -> T(text, Modifier.padding(horizontal = rowPadH, vertical = 16.dp), size = typo.title,
+                        align = TextAlign.Start, lineHeightMul = 1.4f)
+                    else -> Small(stringResource(R.string.summary_failed), Modifier.padding(horizontal = rowPadH, vertical = 16.dp), maxLines = 3)
+                }
+            }
+            Rule(color = colors.fg)
+            TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
+            // The same states as the row that wrote them the first time: without the model on
+            // the phone, writing them again can only fail, so the tap fetches it instead.
+            val (roomy, here, says) = pointsState()
+            TextRow(
+                stringResource(R.string.points_again), secondary = if (here) null else says, size = typo.title,
+                onClick = if (!roomy) null else ({ if (here) { activity.summarise(item); nav.pop() } else activity.app.fetchSummaryModel() }),
+            )
+            Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -289,7 +370,7 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                     item.transcriptUri.isNotBlank() -> {
                         TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
                         TextRow(stringResource(R.string.share_transcript), size = typo.title) { activity.shareTranscript(item) }
-                        PointsRow(item, activity)
+                        PointsRow(item, nav)
                     }
                     else -> TextRow(stringResource(R.string.transcribe), secondary = stringResource(R.string.transcribe_hint), size = typo.title) { sheet = true }
                 }

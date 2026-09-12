@@ -57,6 +57,8 @@
     <string name="summary_needs_memory">ce téléphone a %d Go : pas assez</string>
     <string name="summary_title">points principaux</string>
     <string name="summary_now">les points principaux</string>
+    <string name="summary_ready">écrits · toucher pour les lire</string>
+    <string name="points_again">les réécrire</string>
     <string name="summary_hint">écrits en tête de la transcription</string>
     <string name="summary_failed">les points principaux n\'ont pas pu être écrits</string>
 </resources>

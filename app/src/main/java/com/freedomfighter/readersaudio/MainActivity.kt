@@ -34,6 +34,7 @@ import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.ui.ListScreen
 import com.freedomfighter.readersaudio.ui.LocalColors
 import com.freedomfighter.readersaudio.ui.Nav
+import com.freedomfighter.readersaudio.ui.PointsScreen
 import com.freedomfighter.readersaudio.ui.PlayerScreen
 import com.freedomfighter.readersaudio.ui.ReaderTheme
 import com.freedomfighter.readersaudio.ui.Screen
@@ -110,10 +111,11 @@ class MainActivity : ComponentActivity() {
                         delay(250)
                     }
                 }
-                when (nav.current) {
+                when (val screen = nav.current) {
                     Screen.List -> ListScreen(nav, app, activity)
                     Screen.Player -> PlayerScreen(nav, app, activity)
                     Screen.Settings -> SettingsScreen(nav, app)
+                    is Screen.Points -> PointsScreen(nav, app, activity, screen.id)
                 }
             }
         }

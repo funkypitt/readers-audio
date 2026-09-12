@@ -59,6 +59,8 @@
     <string name="summary_needs_memory">this phone has %d GB: not enough</string>
     <string name="summary_title">main points</string>
     <string name="summary_now">the main points</string>
+    <string name="summary_ready">written · tap to read them</string>
+    <string name="points_again">write them again</string>
     <string name="summary_hint">written at the top of the transcript</string>
     <string name="summary_failed">the main points could not be written</string>
 </resources>

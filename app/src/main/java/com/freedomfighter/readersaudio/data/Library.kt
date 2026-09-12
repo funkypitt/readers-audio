@@ -24,7 +24,9 @@ data class Item(
     val lastPlayed: Long = 0,
     val addedAt: Long = System.currentTimeMillis(),
     /** content:// URI of the .txt in Documents/Transcriptions, "" when none. */
-    val transcriptUri: String = ""
+    val transcriptUri: String = "",
+    /** Whether that .txt carries its main points at the head. */
+    val hasPoints: Boolean = false
 ) {
     val isCopy: Boolean get() = uri.startsWith("file:")
 }
@@ -48,7 +50,8 @@ class Library(private val context: Context) {
         (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
             Item(o.getString("id"), o.getString("uri"), o.optString("title"), o.optString("name"), o.optString("mime", "audio/*"),
-                o.optLong("durationMs"), o.optLong("positionMs"), o.optLong("lastPlayed"), o.optLong("addedAt"), o.optString("transcriptUri"))
+                o.optLong("durationMs"), o.optLong("positionMs"), o.optLong("lastPlayed"), o.optLong("addedAt"), o.optString("transcriptUri"),
+                o.optBoolean("hasPoints"))
         }
     }.getOrDefault(emptyList())
 
@@ -57,7 +60,7 @@ class Library(private val context: Context) {
         list.forEach { r ->
             arr.put(JSONObject().put("id", r.id).put("uri", r.uri).put("title", r.title).put("name", r.name).put("mime", r.mime)
                 .put("durationMs", r.durationMs).put("positionMs", r.positionMs).put("lastPlayed", r.lastPlayed).put("addedAt", r.addedAt)
-                .put("transcriptUri", r.transcriptUri))
+                .put("transcriptUri", r.transcriptUri).put("hasPoints", r.hasPoints))
         }
         val tmp = File(index.parentFile, "library.json.tmp")
         tmp.writeText(arr.toString())
