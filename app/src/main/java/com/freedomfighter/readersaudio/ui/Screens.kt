@@ -115,10 +115,51 @@ fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit
         else add(MenuItem(stringResource(if (hasTranscript) R.string.transcribe_again else R.string.transcribe)) { onTranscribe(item) })
         add(MenuItem(stringResource(R.string.share_audio)) { activity.shareAudio(item) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.share_transcript)) { activity.shareTranscript(item) })
+        if (hasTranscript && !busy) add(pointsMenuItem(item, activity))
         add(MenuItem(stringResource(R.string.save_copy)) { activity.saveCopy(item) })
         if (inPlayer) add(MenuItem(stringResource(R.string.stop)) { activity.stopPlayback(); nav.pop() })
         else add(MenuItem(stringResource(R.string.remove)) { activity.remove(item) })
     }, onDismiss = onDismiss)
+}
+
+/**
+ * What the main points come to: ready, still to fetch, or refused on a phone that cannot hold
+ * the model. Shared by the player row and the file's menu so both say the same thing.
+ */
+@Composable
+private fun pointsState(): Triple<Boolean, Boolean, String> {
+    val context = LocalContext.current
+    val roomy = remember { SummaryModel.phoneCanHoldIt(context) }
+    val fetching by SummaryModel.downloading.collectAsState()
+    val here = remember(fetching) { SummaryModel.isDownloaded(context) }
+    val says = when {
+        !roomy -> stringResource(R.string.summary_needs_memory, SummaryModel.phoneMemoryGb(context))
+        fetching >= 0 -> "$fetching%"
+        !here -> "${SummaryModel.MB} MB · " + stringResource(R.string.model_not_yet)
+        else -> stringResource(R.string.summary_hint)
+    }
+    return Triple(roomy, here, says)
+}
+
+/**
+ * The main points of a transcript already made. Without this the summary could only be had by
+ * transcribing the whole file again, which for an hour of audio nobody will do.
+ */
+@Composable
+private fun pointsMenuItem(item: Item, activity: MainActivity): MenuItem {
+    val (roomy, here, says) = pointsState()
+    return MenuItem(stringResource(R.string.summary_now), secondary = says) {
+        if (!roomy) Unit else if (here) activity.summarise(item) else activity.app.fetchSummaryModel()
+    }
+}
+
+@Composable
+private fun PointsRow(item: Item, activity: MainActivity) {
+    val (roomy, here, says) = pointsState()
+    TextRow(
+        stringResource(R.string.summary_now), secondary = says, size = LocalTypo.current.title,
+        onClick = if (!roomy) null else ({ if (here) activity.summarise(item) else activity.app.fetchSummaryModel() }),
+    )
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -231,6 +272,7 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                     item.transcriptUri.isNotBlank() -> {
                         TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
                         TextRow(stringResource(R.string.share_transcript), size = typo.title) { activity.shareTranscript(item) }
+                        PointsRow(item, activity)
                     }
                     else -> TextRow(stringResource(R.string.transcribe), secondary = stringResource(R.string.transcribe_hint), size = typo.title) { sheet = true }
                 }
@@ -332,8 +374,8 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                     inverted = quality == m.key, secondary = "${m.mb} MB$state", size = typo.title
                 ) { quality = m.key }
             }
+            Rule(Modifier.padding(vertical = 4.dp))
             if (roomy) {
-                Rule(Modifier.padding(vertical = 4.dp))
                 val pointsState = when {
                     modelDownloading >= 0 -> " · $modelDownloading%"
                     !summaryHere -> " · " + stringResource(R.string.model_not_yet)
@@ -346,6 +388,13 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                     if (summaryHere) { points = !points; activity.app.prefs.setSummaryOnPhone(points) }
                     else activity.app.fetchSummaryModel()
                 }
+            } else {
+                // A phone too small to hold the model is told so, as in Reader's Recorder: a row
+                // that simply vanishes reads as a feature lost in the last update.
+                TextRow(
+                    stringResource(R.string.summary_on_phone), size = typo.title,
+                    secondary = stringResource(R.string.summary_needs_memory, SummaryModel.phoneMemoryGb(context)),
+                )
             }
             Rule(color = colors.fg)
             Row(Modifier.fillMaxWidth()) {

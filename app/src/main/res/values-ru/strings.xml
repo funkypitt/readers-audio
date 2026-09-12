@@ -53,5 +53,9 @@
     <string name="transcribe_hint">выбрать язык и качество</string>
     <string name="phase_summary">записываю основные мысли, %d %%</string>
     <string name="summary_on_phone">и основные мысли</string>
+    <string name="summary_needs_memory">в телефоне %d ГБ: этого мало</string>
     <string name="summary_title">основные мысли</string>
+    <string name="summary_now">основные мысли</string>
+    <string name="summary_hint">в начале расшифровки</string>
+    <string name="summary_failed">основные мысли записать не удалось</string>
 </resources>

@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.compose.runtime.getValue
@@ -17,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.freedomfighter.readersaudio.data.Item
 import com.freedomfighter.readersaudio.summary.Summariser
 import com.freedomfighter.readersaudio.summary.SummaryModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
@@ -38,7 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * wake lock, with a progress notification that can stop it. Everything stays on the phone.
  */
 class TranscribeService : Service() {
-    private data class Job(val id: String, val language: String, val model: String, val summary: Boolean)
+    private data class Job(val id: String, val language: String, val model: String, val summary: Boolean,
+        /** Write the main points of a transcript already made, instead of transcribing again. */
+        val pointsOnly: Boolean = false)
     private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
@@ -55,7 +59,7 @@ class TranscribeService : Service() {
             else -> intent?.getStringExtra(EXTRA_ID)?.let { id ->
                 if (id != Live.id && queue.none { it.id == id }) {
                     queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT,
-                        intent.getBooleanExtra(EXTRA_SUMMARY, false)))
+                        intent.getBooleanExtra(EXTRA_SUMMARY, false), intent.getBooleanExtra(EXTRA_POINTS_ONLY, false)))
                     Live.waiting.add(id)
                 }
             }
@@ -74,8 +78,9 @@ class TranscribeService : Service() {
                 val id = job.id
                 Live.waiting.remove(id)
                 val item = app.library.get(id) ?: continue
-                Live.id = id; Live.phase = "transcribe"; Live.percent = 0
+                Live.id = id; Live.phase = if (job.pointsOnly) "summary" else "transcribe"; Live.percent = 0
                 if (Live.errorId == id) { Live.errorId = ""; Live.error = "" }
+                if (job.pointsOnly) { points(item, job.language); continue }
                 try {
                     val text = withContext(Dispatchers.Default) {
                         Transcriber.run(this@TranscribeService, item, job.language.ifBlank { null }, job.model,
@@ -104,6 +109,46 @@ class TranscribeService : Service() {
             Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear()
             runCatching { if (lock?.isHeld == true) lock?.release() }
         }
+    }
+
+    /**
+     * The main points of a transcript already saved, put above it in the same file. Asked for on
+     * its own, from the player or the file's menu: the points are otherwise only offered before a
+     * transcription, and no one wants to transcribe an hour of audio again to get them.
+     *
+     * Here a failure is said out loud, unlike during a transcription: the points were the whole
+     * of the job. An earlier block of points is replaced, not stacked, and nothing is written
+     * unless new points came back — a failed attempt leaves the file exactly as it was.
+     */
+    private suspend fun points(item: Item, language: String) {
+        val id = item.id
+        try {
+            val saved = withContext(Dispatchers.IO) { readTranscript(item) }
+            if (saved == null) {
+                app.library.update(id) { it.copy(transcriptUri = "") }
+                Live.errorId = id; Live.error = getString(R.string.transcript_gone)
+                return
+            }
+            val plain = withoutPoints(saved)
+            val whole = withContext(Dispatchers.Default) { withPoints(plain, language) }
+            if (cancelled.get()) return
+            if (whole == plain) { Live.errorId = id; Live.error = getString(R.string.summary_failed); return }
+            Live.phase = "save"
+            withContext(Dispatchers.IO) { Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, whole) }
+        } catch (e: Exception) {
+            if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
+        }
+    }
+
+    private fun readTranscript(item: Item): String? = runCatching {
+        contentResolver.openInputStream(Uri.parse(item.transcriptUri))!!.use { String(it.readBytes(), Charsets.UTF_8) }
+    }.getOrNull()
+
+    /** The transcript alone: a block of points written by an earlier run is dropped. */
+    private fun withoutPoints(text: String): String {
+        if (!text.startsWith(getString(R.string.summary_title).uppercase())) return text
+        val cut = text.indexOf("\n\n\n")
+        return if (cut < 0) text else text.substring(cut + 3)
     }
 
     /**
@@ -172,6 +217,7 @@ class TranscribeService : Service() {
         const val EXTRA_LANGUAGE = "language"
         const val EXTRA_MODEL = "model"
         const val EXTRA_SUMMARY = "summary"
+        const val EXTRA_POINTS_ONLY = "points_only"
         private const val CHANNEL_ID = "transcription"
         private const val NOTIF_ID = 7
 
@@ -186,6 +232,11 @@ class TranscribeService : Service() {
         fun start(ctx: Context, id: String, language: String, model: String, summary: Boolean) = ContextCompat.startForegroundService(ctx,
             Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language).putExtra(EXTRA_MODEL, model)
                 .putExtra(EXTRA_SUMMARY, summary))
+        /** The main points of a transcript already made, without transcribing again. */
+        fun points(ctx: Context, id: String, language: String) = ContextCompat.startForegroundService(ctx,
+            Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language)
+                .putExtra(EXTRA_POINTS_ONLY, true))
+
         fun cancel(ctx: Context) { if (Live.id.isNotBlank() || Live.waiting.isNotEmpty()) ContextCompat.startForegroundService(ctx, Intent(ctx, TranscribeService::class.java).setAction(ACTION_CANCEL)) }
     }
 }
