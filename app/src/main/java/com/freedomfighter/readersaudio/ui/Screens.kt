@@ -134,7 +134,7 @@ private fun pointsState(): Triple<Boolean, Boolean, String> {
     val here = remember(fetching) { SummaryModel.isDownloaded(context) }
     val says = when {
         !roomy -> stringResource(R.string.summary_needs_memory, SummaryModel.phoneMemoryGb(context))
-        fetching >= 0 -> "$fetching%"
+        fetching >= 0 -> stringResource(R.string.phase_model, fetching)
         !here -> "${SummaryModel.MB} MB · " + stringResource(R.string.model_not_yet)
         else -> stringResource(R.string.summary_hint)
     }
@@ -366,7 +366,7 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
             Models.ALL.forEach { m ->
                 val state = when {
                     Models.isDownloaded(context, m) -> ""
-                    downloading >= 0 -> " · $downloading%"
+                    downloading >= 0 -> " · " + stringResource(R.string.phase_model, downloading)
                     else -> " · " + stringResource(R.string.model_not_yet)
                 }
                 TextRow(
@@ -377,7 +377,7 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
             Rule(Modifier.padding(vertical = 4.dp))
             if (roomy) {
                 val pointsState = when {
-                    modelDownloading >= 0 -> " · $modelDownloading%"
+                    modelDownloading >= 0 -> " · " + stringResource(R.string.phase_model, modelDownloading)
                     !summaryHere -> " · " + stringResource(R.string.model_not_yet)
                     else -> ""
                 }
