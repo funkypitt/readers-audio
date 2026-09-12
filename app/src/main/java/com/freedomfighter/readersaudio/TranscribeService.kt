@@ -42,7 +42,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 class TranscribeService : Service() {
     private data class Job(val id: String, val language: String, val model: String, val summary: Boolean,
         /** Write the main points of a transcript already made, instead of transcribing again. */
-        val pointsOnly: Boolean = false)
+        val pointsOnly: Boolean = false,
+        /** Fetch the two gigabytes of the model that writes the points. */
+        val fetchModel: Boolean = false)
     private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
@@ -55,12 +57,14 @@ class TranscribeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         goForeground()
         when (intent?.action) {
-            ACTION_CANCEL -> { cancelled.set(true); queue.clear(); Live.waiting.clear(); WhisperLib.cancel() }
+            ACTION_CANCEL -> { cancelled.set(true); queue.clear(); Live.waiting.clear(); Live.waitingPoints.clear(); WhisperLib.cancel() }
+            ACTION_FETCH_MODEL -> if (queue.none { it.fetchModel }) queue.add(Job("", "", Models.DEFAULT, false, fetchModel = true))
             else -> intent?.getStringExtra(EXTRA_ID)?.let { id ->
                 if (id != Live.id && queue.none { it.id == id }) {
                     queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT,
                         intent.getBooleanExtra(EXTRA_SUMMARY, false), intent.getBooleanExtra(EXTRA_POINTS_ONLY, false)))
                     Live.waiting.add(id)
+                    if (intent.getBooleanExtra(EXTRA_POINTS_ONLY, false)) Live.waitingPoints.add(id)
                 }
             }
         }
@@ -75,8 +79,9 @@ class TranscribeService : Service() {
         try {
             while (!cancelled.get()) {
                 val job = queue.poll() ?: break
+                if (job.fetchModel) { fetchModel(); continue }
                 val id = job.id
-                Live.waiting.remove(id)
+                Live.waiting.remove(id); Live.waitingPoints.remove(id)
                 val item = app.library.get(id) ?: continue
                 Live.id = id; Live.phase = if (job.pointsOnly) "summary" else "transcribe"; Live.percent = 0
                 if (Live.errorId == id) { Live.errorId = ""; Live.error = "" }
@@ -106,8 +111,29 @@ class TranscribeService : Service() {
             }
         } finally {
             ticker.cancel()
-            Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear()
+            Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear(); Live.waitingPoints.clear()
             runCatching { if (lock?.isHeld == true) lock?.release() }
+        }
+    }
+
+    /**
+     * The two gigabytes of the model that writes the points, fetched here rather than in a
+     * coroutine of the application: such a coroutine dies with the process, and Android ends a
+     * backgrounded process long before a download of this size is over — which is why it took
+     * the user three attempts, none of them saying a word about the failure. In the service the
+     * wake lock and the notification keep the phone on the job, the row shows where it is, and
+     * what came down already is picked up again on the next try.
+     */
+    private suspend fun fetchModel() {
+        Live.id = ""; Live.phase = "model"; Live.percent = 0
+        app.modelError.value = ""
+        try {
+            withContext(Dispatchers.IO) {
+                SummaryModel.download(this@TranscribeService, { Live.percent = it.coerceIn(0, 100) }, { cancelled.get() })
+            }
+            if (SummaryModel.isDownloaded(this)) app.prefs.setSummaryOnPhone(true)
+        } catch (e: Exception) {
+            if (!cancelled.get()) app.modelError.value = (e.message ?: e.javaClass.simpleName).take(120)
         }
     }
 
@@ -209,10 +235,13 @@ class TranscribeService : Service() {
         var error by mutableStateOf("")
         var errorId by mutableStateOf("")
         val waiting = mutableStateListOf<String>()
+        /** Of those waiting, the ones that are only to be given their main points. */
+        val waitingPoints = mutableStateListOf<String>()
     }
 
     companion object {
         const val ACTION_CANCEL = "com.freedomfighter.readersaudio.TRANSCRIBE_CANCEL"
+        const val ACTION_FETCH_MODEL = "com.freedomfighter.readersaudio.FETCH_SUMMARY_MODEL"
         const val EXTRA_ID = "id"
         const val EXTRA_LANGUAGE = "language"
         const val EXTRA_MODEL = "model"
@@ -232,6 +261,10 @@ class TranscribeService : Service() {
         fun start(ctx: Context, id: String, language: String, model: String, summary: Boolean) = ContextCompat.startForegroundService(ctx,
             Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language).putExtra(EXTRA_MODEL, model)
                 .putExtra(EXTRA_SUMMARY, summary))
+        /** Fetch the model that writes the points, under the notification and the wake lock. */
+        fun fetchModel(ctx: Context) = ContextCompat.startForegroundService(ctx,
+            Intent(ctx, TranscribeService::class.java).setAction(ACTION_FETCH_MODEL))
+
         /** The main points of a transcript already made, without transcribing again. */
         fun points(ctx: Context, id: String, language: String) = ContextCompat.startForegroundService(ctx,
             Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language)

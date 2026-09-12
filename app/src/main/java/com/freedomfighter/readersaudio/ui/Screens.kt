@@ -102,6 +102,17 @@ fun itemStatus(item: Item, activity: MainActivity): String {
     return listOf(time, extra).filter { it.isNotBlank() }.joinToString(" · ")
 }
 
+/**
+ * "stop the transcription" or "stop the summary": during the points it is the points that stop,
+ * and calling that a transcription told the user the wrong thing about what he was cancelling.
+ */
+@Composable
+private fun stopLabel(item: Item): String {
+    val t = TranscribeService.Live
+    val points = (t.id == item.id && t.phase == "summary") || item.id in t.waitingPoints
+    return stringResource(if (points) R.string.stop_summary else R.string.stop_transcription)
+}
+
 /** Everything one can do with a file: from a long press in the list, or ⋯ in the player. */
 @Composable
 fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit, onTranscribe: (Item) -> Unit, inPlayer: Boolean = false) {
@@ -111,7 +122,7 @@ fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit
     TextMenu(item.title, buildList {
         if (!inPlayer) add(MenuItem(stringResource(R.string.play)) { activity.play(item); nav.push(Screen.Player) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved)) { activity.openTranscript(item) })
-        if (busy) add(MenuItem(stringResource(R.string.stop_transcription)) { activity.cancelTranscription() })
+        if (busy) add(MenuItem(stopLabel(item)) { activity.cancelTranscription() })
         else add(MenuItem(stringResource(if (hasTranscript) R.string.transcribe_again else R.string.transcribe)) { onTranscribe(item) })
         add(MenuItem(stringResource(R.string.share_audio)) { activity.shareAudio(item) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.share_transcript)) { activity.shareTranscript(item) })
@@ -129,14 +140,20 @@ fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit
 @Composable
 private fun pointsState(): Triple<Boolean, Boolean, String> {
     val context = LocalContext.current
+    val app = context.applicationContext as App
     val roomy = remember { SummaryModel.phoneCanHoldIt(context) }
     val fetching by SummaryModel.downloading.collectAsState()
+    val failed by app.modelError.collectAsState()
     val here = remember(fetching) { SummaryModel.isDownloaded(context) }
+    val part = remember(fetching) { SummaryModel.partPercent(context) }
     val says = when {
         !roomy -> stringResource(R.string.summary_needs_memory, SummaryModel.phoneMemoryGb(context))
         fetching >= 0 -> stringResource(R.string.phase_model, fetching)
-        !here -> "${SummaryModel.MB} MB · " + stringResource(R.string.model_not_yet)
-        else -> stringResource(R.string.summary_hint)
+        here -> stringResource(R.string.summary_hint)
+        // A failed fetch used to say nothing at all, and what was already down looked lost.
+        failed.isNotBlank() -> failed
+        part > 0 -> stringResource(R.string.model_resume, part)
+        else -> "${SummaryModel.MB} MB · " + stringResource(R.string.model_not_yet)
     }
     return Triple(roomy, here, says)
 }
@@ -267,8 +284,8 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                 }
                 Rule(Modifier.padding(vertical = 8.dp))
                 when {
-                    t.id == item.id -> TextRow(TranscribeService.phaseLabel(LocalContext.current, t.phase, t.percent), secondary = stringResource(R.string.stop_transcription), size = typo.title) { activity.cancelTranscription() }
-                    item.id in t.waiting -> TextRow(stringResource(R.string.phase_waiting), secondary = stringResource(R.string.stop_transcription), size = typo.title) { activity.cancelTranscription() }
+                    t.id == item.id -> TextRow(TranscribeService.phaseLabel(LocalContext.current, t.phase, t.percent), secondary = stopLabel(item), size = typo.title) { activity.cancelTranscription() }
+                    item.id in t.waiting -> TextRow(stringResource(R.string.phase_waiting), secondary = stopLabel(item), size = typo.title) { activity.cancelTranscription() }
                     item.transcriptUri.isNotBlank() -> {
                         TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
                         TextRow(stringResource(R.string.share_transcript), size = typo.title) { activity.shareTranscript(item) }
@@ -349,7 +366,9 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
     // two gigabytes the model needs. The first tap fetches it; the choice applies to this file.
     val roomy = remember { SummaryModel.phoneCanHoldIt(context) }
     val modelDownloading by SummaryModel.downloading.collectAsState()
+    val modelFailed by activity.app.modelError.collectAsState()
     val summaryHere = remember(modelDownloading) { SummaryModel.isDownloaded(context) }
+    val modelPart = remember(modelDownloading) { SummaryModel.partPercent(context) }
     var points by remember { mutableStateOf(activity.app.prefs.settings.value.summaryOnPhone && summaryHere) }
     var picking by remember { mutableStateOf(false) }
     val downloading by Models.downloading.collectAsState()
@@ -378,8 +397,10 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
             if (roomy) {
                 val pointsState = when {
                     modelDownloading >= 0 -> " · " + stringResource(R.string.phase_model, modelDownloading)
-                    !summaryHere -> " · " + stringResource(R.string.model_not_yet)
-                    else -> ""
+                    summaryHere -> ""
+                    modelFailed.isNotBlank() -> " · $modelFailed"
+                    modelPart > 0 -> " · " + stringResource(R.string.model_resume, modelPart)
+                    else -> " · " + stringResource(R.string.model_not_yet)
                 }
                 TextRow(
                     stringResource(R.string.summary_on_phone), inverted = points && summaryHere,

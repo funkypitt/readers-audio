@@ -12,6 +12,7 @@
     <string name="transcribe">transkribieren</string>
     <string name="transcribe_again">erneut transkribieren</string>
     <string name="stop_transcription">Transkription stoppen</string>
+    <string name="stop_summary">Zusammenfassung stoppen</string>
     <string name="open_transcript">Transkript öffnen</string>
     <string name="transcript_saved">eine .txt in Documents/Transcriptions</string>
     <string name="transcript_word">Transkript</string>
@@ -35,6 +36,7 @@
     <string name="language_auto">erkannt</string>
     <string name="model">Transkriptionsmodell (grösser = besser, langsamer)</string>
     <string name="model_not_yet">wird beim ersten Mal geladen</string>
+    <string name="model_resume">%d%% schon geladen · zum Fortsetzen tippen</string>
     <string name="about">spielt Audiodateien ab und transkribiert sie auf dem Telefon; nichts verlässt es</string>
     <string name="transcripts_hint">Transkripte sind einfache .txt-Dateien in Documents/Transcriptions: jeder Reader öffnet sie, auch Reader\'s Books.</string>
     <string name="cant_open">diese Datei lässt sich nicht öffnen — mit + erneut öffnen</string>

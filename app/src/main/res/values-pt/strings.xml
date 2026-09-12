@@ -12,6 +12,7 @@
     <string name="transcribe">transcrever</string>
     <string name="transcribe_again">transcrever de novo</string>
     <string name="stop_transcription">parar a transcrição</string>
+    <string name="stop_summary">parar o resumo</string>
     <string name="open_transcript">abrir a transcrição</string>
     <string name="transcript_saved">um .txt em Documents/Transcriptions</string>
     <string name="transcript_word">transcrição</string>
@@ -35,6 +36,7 @@
     <string name="language_auto">detetada</string>
     <string name="model">modelo de transcrição (maior = melhor, mais lento)</string>
     <string name="model_not_yet">descarregado na primeira utilização</string>
+    <string name="model_resume">%d%% já descarregado · toca para continuar</string>
     <string name="about">reproduz ficheiros de áudio e transcreve-os no telemóvel; nada sai dele</string>
     <string name="transcripts_hint">As transcrições são ficheiros .txt simples em Documents/Transcriptions: qualquer leitor os abre, incluindo o Reader\'s Books.</string>
     <string name="cant_open">não é possível abrir este ficheiro — abra-o de novo com +</string>

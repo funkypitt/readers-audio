@@ -14,6 +14,7 @@
     <string name="transcribe">transcribe</string>
     <string name="transcribe_again">transcribe again</string>
     <string name="stop_transcription">stop the transcription</string>
+    <string name="stop_summary">stop the summary</string>
     <string name="open_transcript">open the transcript</string>
     <string name="transcript_saved">a .txt in Documents/Transcriptions</string>
     <string name="transcript_word">transcript</string>
@@ -37,6 +38,7 @@
     <string name="language_auto">detected</string>
     <string name="model">transcription model (bigger = better, slower)</string>
     <string name="model_not_yet">fetched at first use</string>
+    <string name="model_resume">%d%% already down · tap to carry on</string>
     <string name="about">plays audio files and transcribes them on the phone; nothing leaves it</string>
     <string name="transcripts_hint">Transcripts are plain .txt files in Documents/Transcriptions: any reader opens them, Reader\'s Books included.</string>
     <string name="cant_open">this file cannot be opened — open it again with +</string>
