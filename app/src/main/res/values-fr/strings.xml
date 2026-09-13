@@ -54,10 +54,10 @@
     <string name="quality_high">haute qualité (beaucoup plus lent)</string>
     <string name="transcribe_hint">choisir la langue et la qualité</string>
     <string name="phase_summary">rédaction des points principaux, %d %%</string>
-    <string name="summary_on_phone">les points principaux aussi</string>
+    <string name="summary_on_phone">les points principaux aussi (beta)</string>
     <string name="summary_needs_memory">ce téléphone a %d Go : pas assez</string>
     <string name="summary_title">points principaux</string>
-    <string name="summary_now">les points principaux</string>
+    <string name="summary_now">les points principaux (beta)</string>
     <string name="summary_ready">écrits · toucher pour les lire</string>
     <string name="points_again">les réécrire</string>
     <string name="summary_hint">écrits en tête de la transcription</string>
