@@ -37,7 +37,7 @@
     <string name="language">language spoken</string>
     <string name="language_auto">detected</string>
     <string name="model">transcription model (bigger = better, slower)</string>
-    <string name="model_not_yet">fetched at first use</string>
+    <string name="model_not_yet">to fetch</string>
     <string name="model_shared">shared with %s</string>
     <string name="model_resume">%d%% already down · tap to carry on</string>
     <string name="about">plays audio files and transcribes them on the phone; nothing leaves it</string>
@@ -52,8 +52,10 @@
     <string name="widget_name">Reader\'s Audio Player · last played</string>
     <string name="widget_desc">the last file played: ▶ resumes it where you stopped</string>
     <string name="widget_empty">nothing played yet</string>
-    <string name="quality_normal">normal quality</string>
-    <string name="quality_high">high quality (much slower)</string>
+    <string name="recommended">recommended</string>
+    <string name="quality_high_hint">four times slower</string>
+    <string name="quality_normal">ordinary</string>
+    <string name="quality_high">careful</string>
     <string name="transcribe_hint">choose the language and the quality</string>
     <string name="phase_summary">writing the main points, %d%%</string>
     <string name="summary_on_phone">main points too (beta)</string>

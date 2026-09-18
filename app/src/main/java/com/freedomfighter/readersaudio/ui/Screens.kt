@@ -447,6 +447,9 @@ fun SettingsScreen(nav: Nav, app: App) {
  * quality, normal by default. High quality is Whisper large-v3-turbo: better punctuation and
  * accuracy, much slower. A bottom sheet in the Reader's style.
  */
+/** What is advised here: long listening, so the model that does not take the whole afternoon. */
+private val RECOMMENDED = Models.NORMAL
+
 @Composable
 fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -481,9 +484,15 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                     downloading >= 0 -> " · " + stringResource(R.string.phase_model, downloading)
                     else -> " · " + stringResource(R.string.model_not_yet)
                 }
+                // Talks and audiobooks run to the hour: the careful model is four times slower.
+                val note = when {
+                    m == RECOMMENDED -> " · " + stringResource(R.string.recommended)
+                    m == Models.HIGH -> " · " + stringResource(R.string.quality_high_hint)
+                    else -> ""
+                }
                 TextRow(
                     stringResource(if (m == Models.HIGH) R.string.quality_high else R.string.quality_normal),
-                    inverted = quality == m.key, secondary = "${m.mb} MB$state", size = typo.title
+                    inverted = quality == m.key, secondary = "${m.mb} MB$note$state", size = typo.title
                 ) { quality = m.key }
             }
             Rule(Modifier.padding(vertical = 4.dp))

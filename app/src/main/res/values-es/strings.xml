@@ -35,7 +35,7 @@
     <string name="language">idioma hablado</string>
     <string name="language_auto">detectado</string>
     <string name="model">modelo de transcripción (más grande = mejor, más lento)</string>
-    <string name="model_not_yet">se descarga al primer uso</string>
+    <string name="model_not_yet">por descargar</string>
     <string name="model_shared">compartido con %s</string>
     <string name="model_resume">%d%% ya descargado · toca para continuar</string>
     <string name="about">reproduce archivos de audio y los transcribe en el teléfono; nada sale de él</string>
@@ -50,8 +50,10 @@
     <string name="widget_name">Reader\'s Audio Player · última escucha</string>
     <string name="widget_desc">el último archivo escuchado: ▶ lo retoma donde lo dejaste</string>
     <string name="widget_empty">nada escuchado todavía</string>
-    <string name="quality_normal">calidad normal</string>
-    <string name="quality_high">alta calidad (mucho más lento)</string>
+    <string name="recommended">recomendado</string>
+    <string name="quality_high_hint">4 veces más lenta</string>
+    <string name="quality_normal">corriente</string>
+    <string name="quality_high">cuidada</string>
     <string name="transcribe_hint">elegir el idioma y la calidad</string>
     <string name="phase_summary">escribiendo los puntos principales, %d %%</string>
     <string name="summary_on_phone">también los puntos principales (beta)</string>

@@ -36,7 +36,7 @@
     <string name="language">язык речи</string>
     <string name="language_auto">определяется</string>
     <string name="model">модель расшифровки (больше = лучше, медленнее)</string>
-    <string name="model_not_yet">загружается при первом использовании</string>
+    <string name="model_not_yet">нужно скачать</string>
     <string name="model_shared">общий с %s</string>
     <string name="model_resume">загружено %d%% · нажмите, чтобы продолжить</string>
     <string name="about">воспроизводит аудиофайлы и расшифровывает их на телефоне; ничего не уходит наружу</string>
@@ -51,8 +51,10 @@
     <string name="widget_name">Reader\'s Audio Player · последнее</string>
     <string name="widget_desc">последний прослушанный файл: ▶ продолжает с места остановки</string>
     <string name="widget_empty">пока ничего не прослушано</string>
-    <string name="quality_normal">обычное качество</string>
-    <string name="quality_high">высокое качество (намного медленнее)</string>
+    <string name="recommended">рекомендуется</string>
+    <string name="quality_high_hint">вчетверо медленнее</string>
+    <string name="quality_normal">обычная</string>
+    <string name="quality_high">тщательная</string>
     <string name="transcribe_hint">выбрать язык и качество</string>
     <string name="phase_summary">записываю основные мысли, %d %%</string>
     <string name="summary_on_phone">и основные мысли (beta)</string>
