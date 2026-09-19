@@ -1,3 +1,5 @@
+![Reader's Audio Player](docs/banner.png)
+
 # Reader's Audio Player
 
 A black-and-white, text-only audio player for Android, in the
@@ -55,3 +57,7 @@ by either is read by the other through a content provider, so the two gigabytes 
 ## Licence
 
 MIT. Media3 is Apache 2.0, whisper.cpp MIT.
+
+## Captures d'écran
+
+<img src="docs/screenshot-1.png" width="30%"> <img src="docs/screenshot-2.png" width="30%">
