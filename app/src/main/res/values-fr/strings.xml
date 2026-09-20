@@ -64,4 +64,11 @@
     <string name="points_again">les réécrire</string>
     <string name="summary_hint">écrits en tête de la transcription</string>
     <string name="summary_failed">les points principaux n\'ont pas pu être écrits</string>
+    <string name="phase_translate">traduction %d %%</string>
+    <string name="translate_into">traduire en %s</string>
+    <string name="translate_hint">sur le téléphone, à partir de la transcription</string>
+    <string name="translate_needs_memory">demande un téléphone de 8 Go ; celui-ci en a %d</string>
+    <string name="stop_translation">arrêter la traduction</string>
+    <string name="open_translation">ouvrir la traduction (%s)</string>
+    <string name="translate_failed">la traduction a échoué</string>
 </resources>

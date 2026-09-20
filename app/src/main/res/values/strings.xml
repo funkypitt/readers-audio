@@ -66,4 +66,11 @@
     <string name="points_again">write them again</string>
     <string name="summary_hint">written at the top of the transcript</string>
     <string name="summary_failed">the main points could not be written</string>
+    <string name="phase_translate">translating %d %%</string>
+    <string name="translate_into">translate into %s</string>
+    <string name="translate_hint">on the phone, from the transcript</string>
+    <string name="translate_needs_memory">needs a phone of 8 GB; this one has %d</string>
+    <string name="stop_translation">stop the translation</string>
+    <string name="open_translation">open the translation (%s)</string>
+    <string name="translate_failed">the translation failed</string>
 </resources>

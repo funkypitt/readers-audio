@@ -22,6 +22,9 @@ import com.freedomfighter.readers.speech.summary.Summariser
 import com.freedomfighter.readers.speech.summary.SummaryModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
 import com.freedomfighter.readers.speech.whisper.Models
+import com.freedomfighter.readers.speech.translate.TranslateModel
+import com.freedomfighter.readers.speech.translate.Translator
+import com.freedomfighter.readers.speech.whisper.Segment
 import com.freedomfighter.readers.speech.whisper.WhisperLib
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +46,9 @@ class TranscribeService : Service() {
         /** Write the main points of a transcript already made, instead of transcribing again. */
         val pointsOnly: Boolean = false,
         /** Fetch the two gigabytes of the model that writes the points. */
-        val fetchModel: Boolean = false)
+        val fetchModel: Boolean = false,
+        /** Translate a transcript already made into this language, instead of transcribing. */
+        val translateTo: String = "")
     private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
@@ -59,7 +64,7 @@ class TranscribeService : Service() {
         goForeground()
         when (intent?.action) {
             ACTION_CANCEL -> {
-                cancelled.set(true); queue.clear(); Live.waiting.clear(); Live.waitingPoints.clear(); WhisperLib.cancel()
+                cancelled.set(true); queue.clear(); Live.waiting.clear(); Live.waitingPoints.clear(); Live.waitingTranslation.clear(); WhisperLib.cancel()
                 if (!running) finish()
                 return START_NOT_STICKY
             }
@@ -67,8 +72,10 @@ class TranscribeService : Service() {
             else -> intent?.getStringExtra(EXTRA_ID)?.let { id ->
                 if (id != Live.id && queue.none { it.id == id }) {
                     queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT,
-                        intent.getBooleanExtra(EXTRA_SUMMARY, false), intent.getBooleanExtra(EXTRA_POINTS_ONLY, false)))
+                        intent.getBooleanExtra(EXTRA_SUMMARY, false), intent.getBooleanExtra(EXTRA_POINTS_ONLY, false),
+                        translateTo = intent.getStringExtra(EXTRA_TRANSLATE_TO).orEmpty()))
                     Live.waiting.add(id)
+                    if (intent.hasExtra(EXTRA_TRANSLATE_TO)) Live.waitingTranslation.add(id)
                     if (intent.getBooleanExtra(EXTRA_POINTS_ONLY, false)) Live.waitingPoints.add(id)
                 }
             }
@@ -88,10 +95,11 @@ class TranscribeService : Service() {
                 val job = queue.poll() ?: break
                 if (job.fetchModel) { fetchModel(); continue }
                 val id = job.id
-                Live.waiting.remove(id); Live.waitingPoints.remove(id)
+                Live.waiting.remove(id); Live.waitingPoints.remove(id); Live.waitingTranslation.remove(id)
                 val item = app.library.get(id) ?: continue
-                Live.id = id; Live.phase = if (job.pointsOnly) "summary" else "transcribe"; Live.percent = 0
+                Live.id = id; Live.phase = if (job.translateTo.isNotBlank()) "translate" else if (job.pointsOnly) "summary" else "transcribe"; Live.percent = 0
                 if (Live.errorId == id) { Live.errorId = ""; Live.error = "" }
+                if (job.translateTo.isNotBlank()) { translate(item, job.translateTo); continue }
                 if (job.pointsOnly) { points(item, job.language); continue }
                 try {
                     val text = withContext(Dispatchers.Default) {
@@ -122,7 +130,7 @@ class TranscribeService : Service() {
             }
         } finally {
             ticker.cancel()
-            Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear(); Live.waitingPoints.clear()
+            Live.id = ""; Live.phase = ""; Live.percent = 0; Live.waiting.clear(); Live.waitingPoints.clear(); Live.waitingTranslation.clear()
             runCatching { if (lock?.isHeld == true) lock?.release() }
             running = false
         }
@@ -172,6 +180,51 @@ class TranscribeService : Service() {
             if (points == null) { Live.errorId = id; Live.error = getString(R.string.summary_failed); return }
             Live.phase = "save"
             withContext(Dispatchers.IO) { keepPoints(id, points, text) }
+        } catch (e: Exception) {
+            if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
+        }
+    }
+
+    /**
+     * A transcript already saved, put into another language on the phone and kept as a file of its
+     * own beside it. The model (two and a half gigabytes, shared with Reader's Podcasts when it is
+     * there) is fetched on the first use, under this service's notification and wake lock. As with
+     * the points asked for on their own, a failure is said out loud: the translation was the job.
+     */
+    private suspend fun translate(item: Item, target: String) {
+        val id = item.id
+        try {
+            val text = withContext(Dispatchers.IO) { Transcriber.text(this@TranscribeService, item) }
+            if (text == null) {
+                app.library.update(id) { it.copy(transcriptUri = "", hasPoints = false) }
+                Live.errorId = id; Live.error = getString(R.string.transcript_gone)
+                return
+            }
+            if (!TranslateModel.isDownloaded(this)) {
+                Live.phase = "model"; Live.percent = 0
+                withContext(Dispatchers.IO) { TranslateModel.download(this@TranscribeService, { Live.percent = it.coerceIn(0, 100) }, { cancelled.get() }) }
+                if (cancelled.get()) return
+            }
+            val handle = TranslateModel.open(this) ?: error(getString(R.string.translate_failed))
+            Live.phase = "translate"; Live.percent = 0
+            // The transcript has no times here, only paragraphs: each is a piece, and the translator
+            // gathers them into passages of its own size.
+            val pieces = text.split(Regex("\\n\\s*\\n")).map { it.trim() }.filter { it.isNotEmpty() }.map { Segment(0, 0, it) }
+            val blocks = withContext(Dispatchers.Default) {
+                handle.use {
+                    Translator.translate(it.path, pieces, target, { p -> Live.percent = p.coerceIn(0, 99) }, { cancelled.get() },
+                        keepInRam = TranslateModel.canPinWeights(this@TranscribeService))
+                }
+            }
+            if (blocks == null || cancelled.get()) return
+            if (blocks.isEmpty()) { Live.errorId = id; Live.error = getString(R.string.translate_failed); return }
+            Live.phase = "save"
+            val translated = blocks.joinToString("\n\n") { it.text } + "\n"
+            val uri = withContext(Dispatchers.IO) {
+                Transcriber.translationFile(this@TranscribeService, id, target).writeText(translated)
+                Transcriber.saveTranslation(this@TranscribeService, app.library.get(id) ?: item, target, translated)
+            }
+            app.library.update(id) { it.copy(translationUri = uri.toString(), translationLang = target) }
         } catch (e: Exception) {
             if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
         }
@@ -239,13 +292,15 @@ class TranscribeService : Service() {
     /** What the screens and the notification show about the transcription. */
     object Live {
         var id by mutableStateOf("")
-        var phase by mutableStateOf("")   // model | transcribe | save
+        var phase by mutableStateOf("")   // model | transcribe | summary | translate | save
         var percent by mutableIntStateOf(0)
         var error by mutableStateOf("")
         var errorId by mutableStateOf("")
         val waiting = mutableStateListOf<String>()
         /** Of those waiting, the ones that are only to be given their main points. */
         val waitingPoints = mutableStateListOf<String>()
+        /** And the ones that are only to be translated. */
+        val waitingTranslation = mutableStateListOf<String>()
     }
 
     companion object {
@@ -256,6 +311,7 @@ class TranscribeService : Service() {
         const val EXTRA_MODEL = "model"
         const val EXTRA_SUMMARY = "summary"
         const val EXTRA_POINTS_ONLY = "points_only"
+        const val EXTRA_TRANSLATE_TO = "translate_to"
         private const val CHANNEL_ID = "transcription"
         private const val NOTIF_ID = 7
 
@@ -263,6 +319,7 @@ class TranscribeService : Service() {
             "model" -> ctx.getString(R.string.phase_model, percent)
             "transcribe" -> ctx.getString(R.string.phase_transcribe, percent)
             "summary" -> ctx.getString(R.string.phase_summary, percent)
+            "translate" -> ctx.getString(R.string.phase_translate, percent)
             "save" -> ctx.getString(R.string.phase_save)
             else -> ctx.getString(R.string.phase_waiting)
         }
@@ -278,6 +335,10 @@ class TranscribeService : Service() {
         fun points(ctx: Context, id: String, language: String) = ContextCompat.startForegroundService(ctx,
             Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language)
                 .putExtra(EXTRA_POINTS_ONLY, true))
+
+        /** A transcript already made, put into [target] on the phone. */
+        fun translate(ctx: Context, id: String, target: String) = ContextCompat.startForegroundService(ctx,
+            Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_TRANSLATE_TO, target))
 
         fun cancel(ctx: Context) { if (Live.id.isNotBlank() || Live.waiting.isNotEmpty()) ContextCompat.startForegroundService(ctx, Intent(ctx, TranscribeService::class.java).setAction(ACTION_CANCEL)) }
     }

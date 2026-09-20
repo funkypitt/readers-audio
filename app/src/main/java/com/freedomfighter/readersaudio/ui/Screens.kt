@@ -48,6 +48,7 @@ import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.data.TextSize
 import com.freedomfighter.readersaudio.data.clock
 import com.freedomfighter.readers.speech.summary.SummaryModel
+import com.freedomfighter.readers.speech.translate.TranslateModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
 import com.freedomfighter.readers.speech.whisper.Models
 import com.freedomfighter.readers.speech.whisper.Prompts
@@ -118,7 +119,8 @@ fun itemStatus(item: Item, activity: MainActivity): String {
 private fun stopLabel(item: Item): String {
     val t = TranscribeService.Live
     val points = (t.id == item.id && t.phase == "summary") || item.id in t.waitingPoints
-    return stringResource(if (points) R.string.stop_summary else R.string.stop_transcription)
+    val translation = (t.id == item.id && t.phase == "translate") || item.id in t.waitingTranslation
+    return stringResource(if (translation) R.string.stop_translation else if (points) R.string.stop_summary else R.string.stop_transcription)
 }
 
 /** Everything one can do with a file: from a long press in the list, or ⋯ in the player. */
@@ -135,6 +137,7 @@ fun ItemMenu(item: Item, activity: MainActivity, nav: Nav, onDismiss: () -> Unit
         add(MenuItem(stringResource(R.string.share_audio)) { activity.shareAudio(item) })
         if (hasTranscript) add(MenuItem(stringResource(R.string.share_transcript)) { activity.shareTranscript(item) })
         if (hasTranscript && !busy) add(pointsMenuItem(item, activity, nav))
+        if (hasTranscript && !busy) translateOffer(item)?.let { o -> add(MenuItem(o.title, secondary = o.secondary) { o.onClick?.invoke(activity) }) }
         add(MenuItem(stringResource(R.string.save_copy)) { activity.saveCopy(item) })
         if (inPlayer) add(MenuItem(stringResource(R.string.stop)) { activity.stopPlayback(); nav.pop() })
         else add(MenuItem(stringResource(R.string.remove)) { activity.remove(item) })
@@ -165,6 +168,34 @@ private fun pointsState(): Triple<Boolean, Boolean, String> {
     }
     return Triple(roomy, here, says)
 }
+
+private class Offer(val title: String, val secondary: String?, val onClick: ((MainActivity) -> Unit)?)
+
+/**
+ * The translation of a transcript already made, into the language of the phone: open it when it
+ * is there, offer it otherwise. Not offered when it would change nothing — a talk transcribed in
+ * the language one reads — and a phone that cannot hold the model is told so rather than left
+ * to find out when the process dies.
+ */
+@Composable
+private fun translateOffer(item: Item): Offer? {
+    val context = LocalContext.current
+    val target = Prefs.deviceLanguage().takeIf { it in TRANSLATABLE } ?: "en"
+    val name = languageLabel(target)
+    if (item.translationLang == target && item.translationUri.isNotBlank())
+        return Offer(stringResource(R.string.open_translation, name), stringResource(R.string.transcript_saved)) { it.openTranslation(item) }
+    if (item.language.isNotBlank() && item.language == target) return null
+    val roomy = remember { TranslateModel.phoneCanHoldIt(context) }
+    val here = remember { TranslateModel.isDownloaded(context) }
+    val secondary = when {
+        !roomy -> stringResource(R.string.translate_needs_memory, TranslateModel.phoneMemoryGb(context))
+        here -> stringResource(R.string.translate_hint)
+        else -> "${TranslateModel.MB} MB · " + stringResource(R.string.model_not_yet)
+    }
+    return Offer(stringResource(R.string.translate_into, name), secondary, if (!roomy) null else ({ a -> a.translate(item, target) }))
+}
+
+private val TRANSLATABLE = setOf("en", "fr", "de", "es", "pt", "ru")
 
 /**
  * The main points of a transcript already made. Without this the summary could only be had by
@@ -382,6 +413,7 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                         TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
                         TextRow(stringResource(R.string.share_transcript), size = typo.title) { activity.shareTranscript(item) }
                         PointsRow(item, nav)
+                        translateOffer(item)?.let { o -> TextRow(o.title, secondary = o.secondary, size = typo.title, onClick = o.onClick?.let { f -> { f(activity) } }) }
                     }
                     else -> TextRow(stringResource(R.string.transcribe), secondary = stringResource(R.string.transcribe_hint), size = typo.title) { sheet = true }
                 }

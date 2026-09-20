@@ -18,6 +18,9 @@ opens — nothing is uploaded. Black and white, text only, six languages; one of
 * The transcript is a plain `.txt` in Documents/Transcriptions; Reader's Books opens it.
 * Main points (beta, off by default): a model of about 2 GB, fetched on the first tap, writes
   them at the top of the same `.txt`. Not offered on a phone with less than about 6 GB of memory.
+* Translate: a transcript already made is put into the phone's language, on the phone, by a
+  2.5 GB model (Gemma 3 4B) fetched on the first use — for a phone of 8 GB. The translation is a
+  second `.txt` beside the first, `<title> (en).txt`.
 * Share the audio or the transcript, or "save a copy to a folder…" from the player.
 * Widget: the last file played; ▶ resumes it, the title opens the player.
 * No storage permission, no account. The network is used only to fetch the models, which are

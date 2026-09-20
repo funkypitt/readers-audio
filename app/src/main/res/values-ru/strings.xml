@@ -65,4 +65,11 @@
     <string name="points_again">написать заново</string>
     <string name="summary_hint">в начале расшифровки</string>
     <string name="summary_failed">основные мысли записать не удалось</string>
+    <string name="phase_translate">перевод %d %%</string>
+    <string name="translate_into">перевести на %s</string>
+    <string name="translate_hint">на телефоне, из расшифровки</string>
+    <string name="translate_needs_memory">нужен телефон на 8 ГБ; у этого %d</string>
+    <string name="stop_translation">остановить перевод</string>
+    <string name="open_translation">открыть перевод (%s)</string>
+    <string name="translate_failed">перевод не удался</string>
 </resources>

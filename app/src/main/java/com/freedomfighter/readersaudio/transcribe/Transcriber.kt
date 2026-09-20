@@ -95,7 +95,9 @@ object Transcriber {
     fun render(ctx: Context, points: String?, text: String): String =
         if (points.isNullOrBlank()) text else head(ctx) + "\n\n" + points.trim() + "\n\n\n" + text
 
-    fun forget(ctx: Context, id: String) { textFile(ctx, id).delete(); pointsFile(ctx, id).delete() }
+    fun translationFile(ctx: Context, id: String, language: String) = File(keep(ctx), "$id.$language.txt")
+
+    fun forget(ctx: Context, id: String) { keep(ctx).listFiles()?.filter { it.name.startsWith("$id.") }?.forEach { it.delete() } }
 
     private fun head(ctx: Context) = ctx.getString(R.string.summary_title).uppercase()
 
@@ -120,14 +122,20 @@ object Transcriber {
      * Save as Documents/Transcriptions/<title>.txt through MediaStore, so any reader opens it;
      * a second transcription of the same file overwrites the first.
      */
-    fun save(ctx: Context, item: Item, text: String): Uri {
+    fun save(ctx: Context, item: Item, text: String): Uri = save(ctx, item.title, item.transcriptUri, text)
+
+    /** The translation, beside the transcript: `<title> (fr).txt`. */
+    fun saveTranslation(ctx: Context, item: Item, language: String, text: String): Uri =
+        save(ctx, item.title.take(94) + " ($language)", item.translationUri.takeIf { item.translationLang == language }.orEmpty(), text)
+
+    private fun save(ctx: Context, title: String, existingUri: String, text: String): Uri {
         val cr = ctx.contentResolver
         val bytes = text.toByteArray(Charsets.UTF_8)
-        item.transcriptUri.takeIf { it.isNotBlank() }?.let { existing ->
+        existingUri.takeIf { it.isNotBlank() }?.let { existing ->
             val u = Uri.parse(existing)
             if (runCatching { cr.openOutputStream(u, "wt")!!.use { it.write(bytes) } }.isSuccess) return u
         }
-        val name = item.title.replace(Regex("[\\\\/:*?\"<>|\\n\\r\\t]"), " ").trim().ifBlank { "transcript" }.take(100) + ".txt"
+        val name = title.replace(Regex("[\\\\/:*?\"<>|\\n\\r\\t]"), " ").trim().ifBlank { "transcript" }.take(100) + ".txt"
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")

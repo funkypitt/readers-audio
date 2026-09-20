@@ -64,4 +64,11 @@
     <string name="points_again">neu schreiben</string>
     <string name="summary_hint">oben in der Abschrift</string>
     <string name="summary_failed">die wichtigsten Punkte konnten nicht geschrieben werden</string>
+    <string name="phase_translate">wird übersetzt %d %%</string>
+    <string name="translate_into">auf %s übersetzen</string>
+    <string name="translate_hint">auf dem Telefon, aus der Abschrift</string>
+    <string name="translate_needs_memory">braucht ein Telefon mit 8 GB; dieses hat %d</string>
+    <string name="stop_translation">Übersetzung stoppen</string>
+    <string name="open_translation">Übersetzung öffnen (%s)</string>
+    <string name="translate_failed">die Übersetzung ist fehlgeschlagen</string>
 </resources>

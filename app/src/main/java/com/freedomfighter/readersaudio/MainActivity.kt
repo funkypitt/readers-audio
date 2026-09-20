@@ -239,6 +239,26 @@ class MainActivity : ComponentActivity() {
         runCatching { startActivity(Intent.createChooser(view, item.title)) }
     }
 
+    fun translate(item: Item, target: String) = TranscribeService.translate(this, item.id, target)
+
+    fun openTranslation(item: Item) {
+        val uri = Uri.parse(item.translationUri)
+        if (runCatching { contentResolver.openInputStream(uri)!!.close() }.isFailure) {
+            // the file was deleted or moved: the app still has the text, and writes it out again
+            val kept = com.freedomfighter.readersaudio.transcribe.Transcriber.translationFile(this, item.id, item.translationLang)
+            if (!kept.exists()) { app.library.update(item.id) { it.copy(translationUri = "", translationLang = "") }; return }
+            val fresh = com.freedomfighter.readersaudio.transcribe.Transcriber.saveTranslation(this, item.copy(translationUri = ""), item.translationLang, kept.readText())
+            app.library.update(item.id) { it.copy(translationUri = fresh.toString()) }
+            openText(fresh, item.title); return
+        }
+        openText(uri, item.title)
+    }
+
+    private fun openText(uri: Uri, title: String) {
+        val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "text/plain").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        runCatching { startActivity(Intent.createChooser(view, title)) }
+    }
+
     private fun transcriptGone(item: Item) {
         app.library.update(item.id) { it.copy(transcriptUri = "") }
         Toast.makeText(this, R.string.transcript_gone, Toast.LENGTH_LONG).show()
