@@ -39,7 +39,7 @@
     <string name="model_shared">geteilt mit %s</string>
     <string name="model_resume">%d%% schon geladen · zum Fortsetzen tippen</string>
     <string name="about">spielt Audiodateien ab und transkribiert sie auf dem Telefon; nichts verlässt es</string>
-    <string name="transcripts_hint">Transkripte sind einfache .txt-Dateien in Documents/Transcriptions: jeder Reader öffnet sie, auch Reader\'s Books.</string>
+    <string name="transcripts_hint">Transkripte sind einfache .txt-Dateien in Documents/Transcriptions; jede Text- oder Lese-App öffnet sie.</string>
     <string name="cant_open">diese Datei lässt sich nicht öffnen — mit + erneut öffnen</string>
     <string name="no_speech">(keine Sprache erkannt)</string>
     <string name="channel_transcription">Transkription</string>
@@ -62,13 +62,25 @@
     <string name="summary_now">die wichtigsten Punkte (beta)</string>
     <string name="summary_ready">geschrieben · zum Lesen tippen</string>
     <string name="points_again">neu schreiben</string>
-    <string name="summary_hint">oben in der Abschrift</string>
+    <string name="summary_hint">oben im Transkript</string>
     <string name="summary_failed">die wichtigsten Punkte konnten nicht geschrieben werden</string>
-    <string name="phase_translate">wird übersetzt %d %%</string>
+    <string name="phase_translate">Übersetzung · %d %%</string>
     <string name="translate_into">auf %s übersetzen</string>
-    <string name="translate_hint">auf dem Telefon, aus der Abschrift</string>
+    <string name="translate_hint">auf dem Telefon, aus dem Transkript</string>
     <string name="translate_needs_memory">braucht ein Telefon mit 8 GB; dieses hat %d</string>
     <string name="stop_translation">Übersetzung stoppen</string>
     <string name="open_translation">Übersetzung öffnen (%s)</string>
     <string name="translate_failed">die Übersetzung ist fehlgeschlagen</string>
+    <string name="error_model_missing">das Modell fehlt — erneut versuchen, um es zu laden</string>
+    <string name="error_no_connection">keine Verbindung</string>
+    <string name="error_download_http">Download abgelehnt (HTTP %1$d)</string>
+    <string name="error_download_cut">Download abgebrochen — erneut versuchen, um fortzusetzen</string>
+    <string name="error_no_space">nicht genug Speicherplatz: %1$d MB nötig</string>
+    <string name="error_no_audio">kein Ton in dieser Datei</string>
+    <string name="error_transcription">Transkription fehlgeschlagen: %1$s</string>
+    <string name="error_download">Download fehlgeschlagen: %1$s</string>
+    <string name="size_mb">%1$d MB</string>
+    <string name="error_cannot_create">%1$s konnte nicht erstellt werden</string>
+    <string name="error_points">die wichtigsten Punkte konnten nicht geschrieben werden: %1$s</string>
+    <string name="error_translation">die Übersetzung ist fehlgeschlagen: %1$s</string>
 </resources>

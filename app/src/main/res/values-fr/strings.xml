@@ -39,7 +39,7 @@
     <string name="model_shared">partagé avec %s</string>
     <string name="model_resume">déjà téléchargé : %d %% — toucher pour continuer</string>
     <string name="about">lit des fichiers audio et les transcrit sur le téléphone ; rien n\'en sort</string>
-    <string name="transcripts_hint">Les transcriptions sont de simples fichiers .txt dans Documents/Transcriptions : n\'importe quelle liseuse les ouvre, Reader\'s Books compris.</string>
+    <string name="transcripts_hint">les transcriptions sont de simples fichiers .txt dans Documents/Transcriptions ; toute app de texte ou de lecture les ouvre.</string>
     <string name="cant_open">impossible d\'ouvrir ce fichier — rouvrez-le avec +</string>
     <string name="no_speech">(aucune parole détectée)</string>
     <string name="channel_transcription">transcription</string>
@@ -64,11 +64,23 @@
     <string name="points_again">les réécrire</string>
     <string name="summary_hint">écrits en tête de la transcription</string>
     <string name="summary_failed">les points principaux n\'ont pas pu être écrits</string>
-    <string name="phase_translate">traduction %d %%</string>
+    <string name="phase_translate">traduction · %d %%</string>
     <string name="translate_into">traduire en %s</string>
     <string name="translate_hint">sur le téléphone, à partir de la transcription</string>
     <string name="translate_needs_memory">demande un téléphone de 8 Go ; celui-ci en a %d</string>
     <string name="stop_translation">arrêter la traduction</string>
     <string name="open_translation">ouvrir la traduction (%s)</string>
     <string name="translate_failed">la traduction a échoué</string>
+    <string name="error_model_missing">le modèle est introuvable — réessayer pour le télécharger</string>
+    <string name="error_no_connection">pas de connexion</string>
+    <string name="error_download_http">téléchargement refusé (HTTP %1$d)</string>
+    <string name="error_download_cut">téléchargement interrompu — réessayer pour le reprendre</string>
+    <string name="error_no_space">pas assez de place : %1$d Mo nécessaires</string>
+    <string name="error_no_audio">aucun son dans ce fichier</string>
+    <string name="error_transcription">échec de la transcription : %1$s</string>
+    <string name="error_download">échec du téléchargement : %1$s</string>
+    <string name="size_mb">%1$d Mo</string>
+    <string name="error_cannot_create">impossible de créer %1$s</string>
+    <string name="error_points">les points principaux n\'ont pas pu être écrits : %1$s</string>
+    <string name="error_translation">la traduction a échoué : %1$s</string>
 </resources>

@@ -125,7 +125,7 @@ class TranscribeService : Service() {
                         }
                     }
                 } catch (e: Exception) {
-                    if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
+                    if (!cancelled.get()) { Live.errorId = id; Live.error = Errors.describe(this@TranscribeService, e, R.string.error_transcription) }
                 }
             }
         } finally {
@@ -153,7 +153,7 @@ class TranscribeService : Service() {
             }
             if (SummaryModel.isDownloaded(this)) app.prefs.setSummaryOnPhone(true)
         } catch (e: Exception) {
-            if (!cancelled.get()) app.modelError.value = (e.message ?: e.javaClass.simpleName).take(120)
+            if (!cancelled.get()) app.modelError.value = Errors.describe(this@TranscribeService, e, R.string.error_download)
         }
     }
 
@@ -181,7 +181,7 @@ class TranscribeService : Service() {
             Live.phase = "save"
             withContext(Dispatchers.IO) { keepPoints(id, points, text) }
         } catch (e: Exception) {
-            if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
+            if (!cancelled.get()) { Live.errorId = id; Live.error = Errors.describe(this@TranscribeService, e, R.string.error_points) }
         }
     }
 
@@ -205,7 +205,7 @@ class TranscribeService : Service() {
                 withContext(Dispatchers.IO) { TranslateModel.download(this@TranscribeService, { Live.percent = it.coerceIn(0, 100) }, { cancelled.get() }) }
                 if (cancelled.get()) return
             }
-            val handle = TranslateModel.open(this) ?: error(getString(R.string.translate_failed))
+            val handle = TranslateModel.open(this) ?: run { Live.errorId = id; Live.error = getString(R.string.translate_failed); return }
             Live.phase = "translate"; Live.percent = 0
             // The transcript has no times here, only paragraphs: each is a piece, and the translator
             // gathers them into passages of its own size.
@@ -226,7 +226,7 @@ class TranscribeService : Service() {
             }
             app.library.update(id) { it.copy(translationUri = uri.toString(), translationLang = target) }
         } catch (e: Exception) {
-            if (!cancelled.get()) { Live.errorId = id; Live.error = (e.message ?: e.javaClass.simpleName).take(120) }
+            if (!cancelled.get()) { Live.errorId = id; Live.error = Errors.describe(this@TranscribeService, e, R.string.error_translation) }
         }
     }
 

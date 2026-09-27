@@ -39,9 +39,9 @@
     <string name="model">transcription model (bigger = better, slower)</string>
     <string name="model_not_yet">to fetch</string>
     <string name="model_shared">shared with %s</string>
-    <string name="model_resume">%d%% already down · tap to carry on</string>
+    <string name="model_resume">%d%% downloaded · tap to continue</string>
     <string name="about">plays audio files and transcribes them on the phone; nothing leaves it</string>
-    <string name="transcripts_hint">Transcripts are plain .txt files in Documents/Transcriptions: any reader opens them, Reader\'s Books included.</string>
+    <string name="transcripts_hint">transcripts are plain .txt files in Documents/Transcriptions; any text or e-book app opens them.</string>
     <string name="cant_open">this file cannot be opened — open it again with +</string>
     <string name="no_speech">(no speech detected)</string>
     <string name="channel_transcription">transcription</string>
@@ -66,11 +66,23 @@
     <string name="points_again">write them again</string>
     <string name="summary_hint">written at the top of the transcript</string>
     <string name="summary_failed">the main points could not be written</string>
-    <string name="phase_translate">translating %d %%</string>
+    <string name="phase_translate">translating · %d%%</string>
     <string name="translate_into">translate into %s</string>
     <string name="translate_hint">on the phone, from the transcript</string>
     <string name="translate_needs_memory">needs a phone of 8 GB; this one has %d</string>
     <string name="stop_translation">stop the translation</string>
     <string name="open_translation">open the translation (%s)</string>
     <string name="translate_failed">the translation failed</string>
+    <string name="error_model_missing">the model is missing — try again to fetch it</string>
+    <string name="error_no_connection">no connection</string>
+    <string name="error_download_http">download refused (HTTP %1$d)</string>
+    <string name="error_download_cut">download cut short — try again to carry on</string>
+    <string name="error_no_space">not enough space: %1$d MB needed</string>
+    <string name="error_no_audio">no sound in this file</string>
+    <string name="error_transcription">transcription failed: %1$s</string>
+    <string name="error_download">download failed: %1$s</string>
+    <string name="size_mb">%1$d MB</string>
+    <string name="error_cannot_create">could not create %1$s</string>
+    <string name="error_points">the main points could not be written: %1$s</string>
+    <string name="error_translation">the translation failed: %1$s</string>
 </resources>

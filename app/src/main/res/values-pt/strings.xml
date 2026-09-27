@@ -35,11 +35,11 @@
     <string name="language">língua falada</string>
     <string name="language_auto">detetada</string>
     <string name="model">modelo de transcrição (maior = melhor, mais lento)</string>
-    <string name="model_not_yet">a obter</string>
+    <string name="model_not_yet">por descarregar</string>
     <string name="model_shared">partilhado com %s</string>
     <string name="model_resume">%d%% já descarregado · toca para continuar</string>
     <string name="about">reproduz ficheiros de áudio e transcreve-os no telemóvel; nada sai dele</string>
-    <string name="transcripts_hint">As transcrições são ficheiros .txt simples em Documents/Transcriptions: qualquer leitor os abre, incluindo o Reader\'s Books.</string>
+    <string name="transcripts_hint">as transcrições são ficheiros .txt simples em Documents/Transcriptions; qualquer app de texto ou de leitura os abre.</string>
     <string name="cant_open">não é possível abrir este ficheiro — abra-o de novo com +</string>
     <string name="no_speech">(nenhuma fala detetada)</string>
     <string name="channel_transcription">transcrição</string>
@@ -57,18 +57,30 @@
     <string name="transcribe_hint">escolher a língua e a qualidade</string>
     <string name="phase_summary">a escrever os pontos principais, %d %%</string>
     <string name="summary_on_phone">também os pontos principais (beta)</string>
-    <string name="summary_needs_memory">este telefone tem %d GB: não chega</string>
+    <string name="summary_needs_memory">este telemóvel tem %d GB: não chega</string>
     <string name="summary_title">pontos principais</string>
     <string name="summary_now">os pontos principais (beta)</string>
     <string name="summary_ready">escritos · toca para os ler</string>
     <string name="points_again">escrever de novo</string>
     <string name="summary_hint">escritos no início da transcrição</string>
     <string name="summary_failed">não foi possível escrever os pontos principais</string>
-    <string name="phase_translate">a traduzir %d %%</string>
+    <string name="phase_translate">a traduzir · %d %%</string>
     <string name="translate_into">traduzir para %s</string>
     <string name="translate_hint">no telemóvel, a partir da transcrição</string>
     <string name="translate_needs_memory">precisa de um telemóvel de 8 GB; este tem %d</string>
     <string name="stop_translation">parar a tradução</string>
     <string name="open_translation">abrir a tradução (%s)</string>
     <string name="translate_failed">a tradução falhou</string>
+    <string name="error_model_missing">falta o modelo — tente de novo para o descarregar</string>
+    <string name="error_no_connection">sem ligação</string>
+    <string name="error_download_http">descarga recusada (HTTP %1$d)</string>
+    <string name="error_download_cut">descarga interrompida — tente de novo para continuar</string>
+    <string name="error_no_space">espaço insuficiente: são precisos %1$d MB</string>
+    <string name="error_no_audio">não há som neste ficheiro</string>
+    <string name="error_transcription">a transcrição falhou: %1$s</string>
+    <string name="error_download">a descarga falhou: %1$s</string>
+    <string name="size_mb">%1$d MB</string>
+    <string name="error_cannot_create">não foi possível criar %1$s</string>
+    <string name="error_points">não foi possível escrever os pontos principais: %1$s</string>
+    <string name="error_translation">a tradução falhou: %1$s</string>
 </resources>

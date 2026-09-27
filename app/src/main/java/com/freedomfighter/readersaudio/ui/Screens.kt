@@ -524,7 +524,7 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                 }
                 TextRow(
                     stringResource(if (m == Models.HIGH) R.string.quality_high else R.string.quality_normal),
-                    inverted = quality == m.key, secondary = "${m.mb} MB$note$state", size = typo.title
+                    inverted = quality == m.key, secondary = stringResource(R.string.size_mb, m.mb) + note + state, size = typo.title
                 ) { quality = m.key }
             }
             Rule(Modifier.padding(vertical = 4.dp))

@@ -31,7 +31,7 @@ object Transcriber {
         }
         if (cancelled()) return null
         // Ours, or the sibling app's copy by file descriptor: either way a path whisper reads.
-        val handle = Models.open(ctx, model) ?: error("model not here")
+        val handle = Models.open(ctx, model) ?: throw com.freedomfighter.readersaudio.ModelMissing()
         val uri = Uri.parse(item.uri)
         val totalMs = durationMs(ctx, uri).takeIf { it > 0 } ?: item.durationMs.coerceAtLeast(1)
         val segments = ArrayList<Segment>()
@@ -141,7 +141,7 @@ object Transcriber {
             put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
             put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/" + FOLDER)
         }
-        val uri = cr.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: error("cannot create $name")
+        val uri = cr.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: throw com.freedomfighter.readersaudio.CannotCreate(name)
         cr.openOutputStream(uri)!!.use { it.write(bytes) }
         return uri
     }
