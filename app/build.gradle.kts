@@ -9,11 +9,13 @@ android {
     compileSdk = 35
 
     defaultConfig {
+        // the speech module's native code (whisper, llama, the voice model's engine) comes for these two only
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         applicationId = "com.freedomfighter.readersaudio"
         minSdk = 29
         targetSdk = 34
-        versionCode = 14
-        versionName = "1.6.1"
+        versionCode = 15
+        versionName = "1.7.0"
     }
 
     buildTypes { release { isMinifyEnabled = false } }

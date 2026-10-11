@@ -15,6 +15,10 @@ opens — nothing is uploaded. Black and white, text only, six languages; one of
   notification and on the lock screen.
 * Transcribe: a sheet asks the language spoken and the quality — normal (Whisper small, 190 MB)
   or high, much slower (large-v3-turbo, 574 MB). The model is fetched once.
+* Paragraphs where the speech breathes and where the voice changes: a small voice model (six
+  megabytes, in the app) looks at the sound around each gap between two lines and says whether
+  another person speaks after it — a question and its answer become two paragraphs, with no
+  speaker labels; pauses and long paragraphs cut the rest, as on the desktop.
 * The transcript is a plain `.txt` in Documents/Transcriptions; Reader's Books opens it.
 * Main points (beta, off by default): a model of about 2 GB, fetched on the first tap, writes
   them at the top of the same `.txt`. Not offered on a phone with less than about 6 GB of memory.
