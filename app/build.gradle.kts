@@ -14,8 +14,8 @@ android {
         applicationId = "com.freedomfighter.readersaudio"
         minSdk = 29
         targetSdk = 34
-        versionCode = 15
-        versionName = "1.7.0"
+        versionCode = 16
+        versionName = "1.8.0"
     }
 
     buildTypes { release { isMinifyEnabled = false } }

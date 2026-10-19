@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ import com.freedomfighter.readers.speech.translate.TranslateModel
 import com.freedomfighter.readersaudio.transcribe.Transcriber
 import com.freedomfighter.readers.speech.whisper.Models
 import com.freedomfighter.readers.speech.whisper.Prompts
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -332,7 +334,7 @@ fun ListScreen(nav: Nav, app: App, activity: MainActivity) {
             Rule()
             val current = all.firstOrNull { it.id == ui.mediaId }
             if (current != null) {
-                TextRow((if (ui.playing) "❚❚  " else "▶  ") + current.title, inverted = true, secondary = itemStatus(current, activity).ifBlank { null }) { nav.push(Screen.Player) }
+                TextRow((if (ui.playing) "❚❚  " else if (ui.waiting) waitingLabel() + "  " else "▶  ") + current.title, inverted = true, secondary = itemStatus(current, activity).ifBlank { null }) { nav.push(Screen.Player) }
             }
             TextRow(stringResource(R.string.open_files)) { activity.openFiles() }
             Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
@@ -372,6 +374,12 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
     if (item == null) { LaunchedEffect(Unit) { nav.pop() }; return }
     val current = ui.mediaId == item.id
     val playing = current && ui.playing
+    // The press is answered before the sound is: the player says when it is filling up, and for
+    // the first moments after a tap, before it has anything to report, the tap itself is the
+    // reason. A button that stays « ▶ » reads as a press lost.
+    var tapped by remember(item.id) { mutableStateOf(false) }
+    LaunchedEffect(tapped, playing) { if (tapped) { if (!playing) delay(2500); tapped = false } }
+    val waiting = !playing && ((current && ui.waiting) || tapped)
     val pos = if (current) ui.positionMs else item.positionMs
     val dur = if (current && ui.durationMs > 0) ui.durationMs else item.durationMs
     val t = TranscribeService.Live
@@ -398,7 +406,10 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                 ) { Progress(if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f) }
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Control(stringResource(R.string.back5), Modifier.weight(1f)) { tick(); if (current) activity.seekBy(-5_000) }
-                    Control(if (playing) "❚❚" else "▶", Modifier.weight(1f), inverted = playing) { tick(); if (current) activity.toggle() else activity.play(item) }
+                    Control(
+                        when { playing -> "❚❚"; waiting -> waitingLabel(); else -> "▶" },
+                        Modifier.weight(1f), inverted = playing || waiting
+                    ) { tick(); if (!playing) tapped = true; if (current) activity.toggle() else activity.play(item) }
                     Control(stringResource(R.string.fwd10), Modifier.weight(1f)) { tick(); if (current) activity.seekBy(10_000) }
                 }
                 TextRow(speedLabel(settings.speed), secondary = stringResource(R.string.speed), size = typo.title) {
@@ -426,6 +437,17 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
         if (menu) ItemMenu(item, activity, nav, onDismiss = { menu = false }, onTranscribe = { sheet = true }, inPlayer = true)
         if (sheet) TranscribeSheet(item, activity, onDismiss = { sheet = false })
     }
+}
+
+
+/**
+ * The play button while the sound is on its way — a stream filling up, a video being fetched
+ * first. The glyph stays and dots come and go after it: the press was taken, the sound follows.
+ */
+@Composable
+fun waitingLabel(): String {
+    val step by produceState(0) { while (true) { delay(400); value = (value + 1) % 3 } }
+    return "▶ " + "· ".repeat(step + 1).trim()
 }
 
 @Composable
