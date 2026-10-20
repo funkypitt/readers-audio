@@ -45,8 +45,10 @@ import com.freedomfighter.readersaudio.R
 import com.freedomfighter.readersaudio.TranscribeService
 import com.freedomfighter.readersaudio.data.FontChoice
 import com.freedomfighter.readersaudio.data.Item
+import com.freedomfighter.readersaudio.data.Palettes
 import com.freedomfighter.readersaudio.data.Prefs
 import com.freedomfighter.readersaudio.data.TextSize
+import com.freedomfighter.readersaudio.data.ThemeMode
 import com.freedomfighter.readersaudio.data.clock
 import com.freedomfighter.readers.speech.summary.SummaryModel
 import com.freedomfighter.readers.speech.translate.TranslateModel
@@ -82,6 +84,15 @@ fun speedLabel(f: Float): String = (if (f == f.toInt().toFloat()) f.toInt().toSt
 @Composable
 fun languageLabel(code: String): String =
     if (code.isBlank()) stringResource(R.string.language_auto) else Locale(code).getDisplayLanguage(Locale.getDefault())
+
+/** The name of a theme, as the settings row and the menu show it. */
+@Composable
+fun themeName(m: ThemeMode): String = stringResource(when (m) {
+    ThemeMode.DARK -> R.string.theme_dark; ThemeMode.LIGHT -> R.string.theme_light; ThemeMode.SYSTEM -> R.string.theme_system
+    ThemeMode.LAVANDE -> R.string.theme_lavande; ThemeMode.SAUGE -> R.string.theme_sauge; ThemeMode.NORDIQUE -> R.string.theme_nordique
+    ThemeMode.TERRACOTTA -> R.string.theme_terracotta; ThemeMode.COQUETTE -> R.string.theme_coquette; ThemeMode.MILITANTE -> R.string.theme_militante
+    ThemeMode.TORRIDE -> R.string.theme_torride; ThemeMode.NATURE -> R.string.theme_nature
+})
 
 /** A hairline, [fraction] of it in the foreground colour. */
 @Composable
@@ -310,7 +321,7 @@ fun PointsScreen(nav: Nav, app: App, activity: MainActivity, id: String) {
 
 @Composable
 fun ListScreen(nav: Nav, app: App, activity: MainActivity) {
-    val colors = LocalColors.current
+    val settings by app.prefs.settings.collectAsState()
     val all by app.library.items.collectAsState()
     val ui = activity.ui
     var menu by remember { mutableStateOf(false) }
@@ -342,7 +353,7 @@ fun ListScreen(nav: Nav, app: App, activity: MainActivity) {
         if (menu) TextMenu(null, listOf(
             MenuItem(stringResource(R.string.open_files)) { activity.openFiles() }
         ), onDismiss = { menu = false }, footer = listOf(
-            MenuItem(if (colors.isDark) stringResource(R.string.theme_light) else stringResource(R.string.theme_dark)) { app.prefs.toggleTheme(colors.isDark) },
+            MenuItem(themeName(Palettes.next(settings.theme))) { app.prefs.nextTheme() },
             MenuItem(stringResource(R.string.settings)) { nav.push(Screen.Settings) }
         ))
         rowMenu?.let { id ->
@@ -455,10 +466,10 @@ private fun Control(label: String, modifier: Modifier, inverted: Boolean = false
     val colors = LocalColors.current
     val typo = LocalTypo.current
     Box(
-        modifier.height(76.dp).background(if (inverted) colors.fg else Color.Transparent).noRippleClickable(onClick = onClick),
+        modifier.height(76.dp).background(if (inverted) colors.accent else Color.Transparent).noRippleClickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        T(label, size = typo.title, color = if (inverted) colors.bg else colors.fg, align = TextAlign.Center, maxLines = 1)
+        T(label, size = typo.title, color = if (inverted) colors.onAccent else colors.fg, align = TextAlign.Center, maxLines = 1)
     }
 }
 
@@ -470,7 +481,6 @@ private fun Control(label: String, modifier: Modifier, inverted: Boolean = false
 fun SettingsScreen(nav: Nav, app: App) {
     val context = LocalContext.current
     val s by app.prefs.settings.collectAsState()
-    val colors = LocalColors.current
     val downloading by Models.downloading.collectAsState()
     BackHandler { nav.pop() }
     Page {
@@ -479,7 +489,7 @@ fun SettingsScreen(nav: Nav, app: App) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 Small(stringResource(R.string.transcripts_hint), Modifier.padding(horizontal = rowPadH).padding(top = 16.dp, bottom = 4.dp), maxLines = 5)
                 Rule(Modifier.padding(vertical = 8.dp))
-                TextRow(if (colors.isDark) stringResource(R.string.theme_dark) else stringResource(R.string.theme_light), secondary = stringResource(R.string.colours)) { app.prefs.toggleTheme(colors.isDark) }
+                TextRow(themeName(s.theme), secondary = stringResource(R.string.colours)) { app.prefs.nextTheme() }
                 TextRow(when (s.textSize) { TextSize.SMALL -> "S"; TextSize.MEDIUM -> "M"; TextSize.LARGE -> "L" }, secondary = stringResource(R.string.text_size)) {
                     app.prefs.setTextSize(when (s.textSize) { TextSize.SMALL -> TextSize.MEDIUM; TextSize.MEDIUM -> TextSize.LARGE; TextSize.LARGE -> TextSize.SMALL })
                 }
