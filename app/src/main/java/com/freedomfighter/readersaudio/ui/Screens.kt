@@ -4,6 +4,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -334,12 +341,11 @@ fun ListScreen(nav: Nav, app: App, activity: MainActivity) {
                 if (all.isEmpty()) item { Small(stringResource(R.string.empty), Modifier.padding(horizontal = rowPadH, vertical = 16.dp), maxLines = 5) }
                 items(all, key = { it.id }) { item ->
                     val status = itemStatus(item, activity)
-                    Box(Modifier.fillMaxWidth().pressable(
-                        onClick = { if (ui.mediaId != item.id) activity.play(item); nav.push(Screen.Player) },
-                        onLongPress = { rowMenu = item.id }
-                    )) {
-                        TextRow(item.title, secondary = status.ifBlank { null })
-                    }
+                    TextRow(
+                        item.title, secondary = status.ifBlank { null },
+                        onLongPress = { rowMenu = item.id },
+                        onClick = { if (ui.mediaId != item.id) activity.play(item); nav.push(Screen.Player) }
+                    )
                 }
             }
             Rule()
@@ -465,8 +471,13 @@ fun waitingLabel(): String {
 private fun Control(label: String, modifier: Modifier, inverted: Boolean = false, onClick: () -> Unit) {
     val colors = LocalColors.current
     val typo = LocalTypo.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    // a card with a colour theme (the play button keeps the accent); a plain box in the inks
+    val bg = when { inverted -> colors.accent; pressed -> colors.press; else -> colors.tile }
     Box(
-        modifier.height(76.dp).background(if (inverted) colors.accent else Color.Transparent).noRippleClickable(onClick = onClick),
+        modifier.height(76.dp).tileCard(bg).background(if (inverted) colors.accent else Color.Transparent)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         T(label, size = typo.title, color = if (inverted) colors.onAccent else colors.fg, align = TextAlign.Center, maxLines = 1)
@@ -533,12 +544,16 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
     var picking by remember { mutableStateOf(false) }
     val downloading by Models.downloading.collectAsState()
     BackHandler(onBack = onDismiss)
+    val tiles = colors.tiles
     Box(Modifier.fillMaxSize().background(colors.bg.copy(alpha = 0.6f)).noRippleClickable(onClick = onDismiss)) {
+        CompositionLocalProvider(LocalInTile provides true) {
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(colors.bg).noRippleClickable { }
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .then(if (tiles) Modifier.padding(horizontal = tileGap).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) else Modifier)
+                .background(if (tiles) colors.tile else colors.bg).noRippleClickable { }
                 .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
-            Rule(color = colors.fg)
+            if (tiles) Spacer(Modifier.height(10.dp)) else Rule(color = colors.fg)
             Small(item.title, Modifier.padding(horizontal = rowPadH).padding(top = 14.dp, bottom = 2.dp), maxLines = 1)
             TextRow(languageLabel(language), secondary = stringResource(R.string.language), size = typo.title) { picking = true }
             Rule(Modifier.padding(vertical = 4.dp))
@@ -584,11 +599,12 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                     secondary = stringResource(R.string.summary_needs_memory, SummaryModel.phoneMemoryGb(context)),
                 )
             }
-            Rule(color = colors.fg)
+            if (tiles) Spacer(Modifier.height(6.dp)) else Rule(color = colors.fg)
             Row(Modifier.fillMaxWidth()) {
                 Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.action_cancel), onClick = onDismiss) }
                 Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.transcribe), inverted = true) { activity.transcribe(item, language, quality, points && summaryHere); onDismiss() } }
             }
+        }
         }
     }
     if (picking) TextMenu(stringResource(R.string.language), Prompts.choices(Prefs.deviceLanguage()).map { code ->
