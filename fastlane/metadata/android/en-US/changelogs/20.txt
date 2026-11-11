@@ -1,0 +1,1 @@
+The language spoken in a recording is now recognised by listening to several passages of it, not only its beginning (which may be music). The language is named on the button that starts the transcription and shown with the result (« language heard: English »). If a language chosen by hand plainly isn't the one spoken, the app asks before transcribing.
