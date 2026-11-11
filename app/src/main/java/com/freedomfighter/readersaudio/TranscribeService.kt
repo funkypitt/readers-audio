@@ -13,6 +13,7 @@ import android.os.PowerManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.app.NotificationCompat
@@ -48,7 +49,9 @@ class TranscribeService : Service() {
         /** Fetch the two gigabytes of the model that writes the points. */
         val fetchModel: Boolean = false,
         /** Translate a transcript already made into this language, instead of transcribing. */
-        val translateTo: String = "")
+        val translateTo: String = "",
+        /** The language was chosen by hand and the person already answered for it: no check. */
+        val sure: Boolean = false)
     private val queue = ConcurrentLinkedQueue<Job>()
     private val cancelled = AtomicBoolean(false)
     private var running = false
@@ -73,8 +76,8 @@ class TranscribeService : Service() {
                 if (id != Live.id && queue.none { it.id == id }) {
                     queue.add(Job(id, intent.getStringExtra(EXTRA_LANGUAGE) ?: "", intent.getStringExtra(EXTRA_MODEL) ?: Models.DEFAULT,
                         intent.getBooleanExtra(EXTRA_SUMMARY, false), intent.getBooleanExtra(EXTRA_POINTS_ONLY, false),
-                        translateTo = intent.getStringExtra(EXTRA_TRANSLATE_TO).orEmpty()))
-                    Live.waiting.add(id)
+                        translateTo = intent.getStringExtra(EXTRA_TRANSLATE_TO).orEmpty(), sure = intent.getBooleanExtra(EXTRA_SURE, false)))
+                    Live.waiting.add(id); Live.doubts.remove(id)
                     if (intent.hasExtra(EXTRA_TRANSLATE_TO)) Live.waitingTranslation.add(id)
                     if (intent.getBooleanExtra(EXTRA_POINTS_ONLY, false)) Live.waitingPoints.add(id)
                 }
@@ -102,11 +105,14 @@ class TranscribeService : Service() {
                 if (job.translateTo.isNotBlank()) { translate(item, job.translateTo); continue }
                 if (job.pointsOnly) { points(item, job.language); continue }
                 try {
-                    val text = withContext(Dispatchers.Default) {
-                        Transcriber.run(this@TranscribeService, item, job.language.ifBlank { null }, job.model,
+                    // A language the person already confirmed against what was heard is not asked about again.
+                    val sure = job.sure || (job.language.isNotBlank() && job.language == item.languageSure)
+                    val result = withContext(Dispatchers.Default) {
+                        Transcriber.run(this@TranscribeService, item, job.language, sure, job.model,
                             { phase, pct -> Live.phase = phase; Live.percent = pct }, { cancelled.get() })
                     }
-                    if (text != null && !cancelled.get()) {
+                    if (result != null && !cancelled.get()) {
+                        val text = result.text
                         // The transcript is saved before anything else is attempted on it: an hour
                         // of work must not hang on a summary that may be interrupted.
                         Live.phase = "save"
@@ -115,14 +121,24 @@ class TranscribeService : Service() {
                             Transcriber.pointsFile(this@TranscribeService, id).delete()
                             Transcriber.save(this@TranscribeService, app.library.get(id) ?: item, Transcriber.render(this@TranscribeService, null, text))
                         }
-                        app.library.update(id) { it.copy(transcriptUri = uri.toString(), hasPoints = false, language = job.language) }
+                        // The language written in, heard or chosen: the points and the translation follow it.
+                        app.library.update(id) { it.copy(transcriptUri = uri.toString(), hasPoints = false, language = result.language,
+                            // Not listened for when the person had already answered: what was heard then still holds.
+                            heardLanguage = if (sure) it.heardLanguage else result.heard,
+                            languageSure = if (job.sure) job.language else it.languageSure) }
                         if (job.summary && !cancelled.get()) {
-                            val points = withContext(Dispatchers.Default) { writePoints(text, job.language) }
+                            val points = withContext(Dispatchers.Default) { writePoints(text, result.language) }
                             if (points != null && !cancelled.get()) {
                                 Live.phase = "save"
                                 withContext(Dispatchers.IO) { keepPoints(id, points, text) }
                             }
                         }
+                    }
+                } catch (e: Transcriber.LanguageDoubt) {
+                    // Stopped before a word was written: the question waits on the file's rows.
+                    if (!cancelled.get()) {
+                        app.library.update(id) { it.copy(heardLanguage = e.heard) }
+                        Live.doubts[id] = Doubt(e.heard, job.language, job.model, job.summary)
                     }
                 } catch (e: Exception) {
                     if (!cancelled.get()) { Live.errorId = id; Live.error = Errors.describe(this@TranscribeService, e, R.string.error_transcription) }
@@ -243,7 +259,8 @@ class TranscribeService : Service() {
             Summariser.summarise(
                 modelPath = it.path,
                 transcript = text,
-                language = language.ifBlank { app.prefs.settings.value.language },
+                // The language the transcript was written in; when nothing could tell, the phone's.
+                language = language.ifBlank { com.freedomfighter.readersaudio.data.Prefs.deviceLanguage() },
                 onProgress = { p -> Live.percent = p.coerceIn(0, 99) },
                 cancelled = { cancelled.get() },
             )
@@ -292,7 +309,7 @@ class TranscribeService : Service() {
     /** What the screens and the notification show about the transcription. */
     object Live {
         var id by mutableStateOf("")
-        var phase by mutableStateOf("")   // model | transcribe | summary | translate | save
+        var phase by mutableStateOf("")   // model | language | transcribe | summary | translate | save
         var percent by mutableIntStateOf(0)
         var error by mutableStateOf("")
         var errorId by mutableStateOf("")
@@ -301,7 +318,12 @@ class TranscribeService : Service() {
         val waitingPoints = mutableStateListOf<String>()
         /** And the ones that are only to be translated. */
         val waitingTranslation = mutableStateListOf<String>()
+        /** Files stopped before transcribing because the language chosen is plainly not the one heard. */
+        val doubts = mutableStateMapOf<String, Doubt>()
     }
+
+    /** What was heard, what was chosen, and how the transcription was asked for, to start it again with the answer. */
+    data class Doubt(val heard: String, val chosen: String, val model: String, val summary: Boolean)
 
     companion object {
         const val ACTION_CANCEL = "com.freedomfighter.readersaudio.TRANSCRIBE_CANCEL"
@@ -312,11 +334,13 @@ class TranscribeService : Service() {
         const val EXTRA_SUMMARY = "summary"
         const val EXTRA_POINTS_ONLY = "points_only"
         const val EXTRA_TRANSLATE_TO = "translate_to"
+        const val EXTRA_SURE = "sure"
         private const val CHANNEL_ID = "transcription"
         private const val NOTIF_ID = 7
 
         fun phaseLabel(ctx: Context, phase: String, percent: Int): String = when (phase) {
             "model" -> ctx.getString(R.string.phase_model, percent)
+            "language" -> ctx.getString(R.string.phase_language)
             "transcribe" -> ctx.getString(R.string.phase_transcribe, percent)
             "summary" -> ctx.getString(R.string.phase_summary, percent)
             "translate" -> ctx.getString(R.string.phase_translate, percent)
@@ -324,9 +348,10 @@ class TranscribeService : Service() {
             else -> ctx.getString(R.string.phase_waiting)
         }
 
-        fun start(ctx: Context, id: String, language: String, model: String, summary: Boolean) = ContextCompat.startForegroundService(ctx,
+        /** [sure]: a language chosen by hand that the person confirmed against the one heard. */
+        fun start(ctx: Context, id: String, language: String, model: String, summary: Boolean, sure: Boolean = false) = ContextCompat.startForegroundService(ctx,
             Intent(ctx, TranscribeService::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_LANGUAGE, language).putExtra(EXTRA_MODEL, model)
-                .putExtra(EXTRA_SUMMARY, summary))
+                .putExtra(EXTRA_SUMMARY, summary).putExtra(EXTRA_SURE, sure))
         /** Fetch the model that writes the points, under the notification and the wake lock. */
         fun fetchModel(ctx: Context) = ContextCompat.startForegroundService(ctx,
             Intent(ctx, TranscribeService::class.java).setAction(ACTION_FETCH_MODEL))

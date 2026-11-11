@@ -204,7 +204,8 @@ class MainActivity : ComponentActivity() {
     fun setSpeed(f: Float) { app.prefs.setSpeed(f); controller?.setPlaybackSpeed(f) }
     fun stopPlayback() { controller?.sendCustomCommand(SessionCommand(PlaybackService.ACTION_STOP, Bundle.EMPTY), Bundle.EMPTY) }
     fun openFiles() = pickFiles.launch(arrayOf("audio/*"))
-    fun transcribe(item: Item, language: String, model: String, summary: Boolean) = TranscribeService.start(this, item.id, language, model, summary)
+    fun transcribe(item: Item, language: String, model: String, summary: Boolean, sure: Boolean = false) =
+        TranscribeService.start(this, item.id, language, model, summary, sure)
     /** The main points of a transcript already saved, no audio read again — in the language it was transcribed in unless told otherwise. */
     fun summarise(item: Item, language: String? = null) =
         TranscribeService.points(this, item.id, (language ?: item.language).ifBlank { Prefs.deviceLanguage() })

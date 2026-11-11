@@ -42,7 +42,7 @@
     <string name="on">an</string>
     <string name="off">aus</string>
     <string name="language">gesprochene Sprache</string>
-    <string name="language_auto">erkannt</string>
+    <string name="language_auto">automatisch erkannt</string>
     <string name="model">Transkriptionsmodell (grösser = besser, langsamer)</string>
     <string name="model_not_yet">noch zu holen</string>
     <string name="model_shared">geteilt mit %s</string>
@@ -92,4 +92,10 @@
     <string name="error_cannot_create">%1$s konnte nicht erstellt werden</string>
     <string name="error_points">die wichtigsten Punkte konnten nicht geschrieben werden: %1$s</string>
     <string name="error_translation">die Übersetzung ist fehlgeschlagen: %1$s</string>
+    <string name="transcribe_lang">transkribieren · Sprache: %1$s</string>
+    <string name="language_doubt">Gehörte Sprache: %1$s. Gewählte Sprache: %2$s.</string>
+    <string name="phase_language">Sprache wird erkannt…</string>
+    <string name="language_heard">gehörte Sprache: %1$s</string>
+    <string name="language_heard_chosen">gehörte Sprache: %1$s — gewählt: %2$s</string>
+    <string name="language_confirm">Sprache bestätigen</string>
 </resources>

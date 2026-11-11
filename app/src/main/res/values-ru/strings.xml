@@ -43,7 +43,7 @@
     <string name="on">вкл</string>
     <string name="off">выкл</string>
     <string name="language">язык речи</string>
-    <string name="language_auto">определяется</string>
+    <string name="language_auto">определяется автоматически</string>
     <string name="model">модель расшифровки (больше = лучше, медленнее)</string>
     <string name="model_not_yet">нужно скачать</string>
     <string name="model_shared">общий с %s</string>
@@ -93,4 +93,10 @@
     <string name="error_cannot_create">не удалось создать %1$s</string>
     <string name="error_points">основные мысли записать не удалось: %1$s</string>
     <string name="error_translation">перевод не удался: %1$s</string>
+    <string name="transcribe_lang">расшифровать · язык: %1$s</string>
+    <string name="language_doubt">Слышен язык: %1$s. Выбран язык: %2$s.</string>
+    <string name="phase_language">определение языка речи…</string>
+    <string name="language_heard">слышен язык: %1$s</string>
+    <string name="language_heard_chosen">слышен язык: %1$s — выбран: %2$s</string>
+    <string name="language_confirm">подтвердите язык</string>
 </resources>

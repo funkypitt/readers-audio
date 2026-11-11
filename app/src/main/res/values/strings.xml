@@ -44,7 +44,7 @@
     <string name="on">on</string>
     <string name="off">off</string>
     <string name="language">language spoken</string>
-    <string name="language_auto">detected</string>
+    <string name="language_auto">recognised automatically</string>
     <string name="model">transcription model (bigger = better, slower)</string>
     <string name="model_not_yet">to fetch</string>
     <string name="model_shared">shared with %s</string>
@@ -94,4 +94,10 @@
     <string name="error_cannot_create">could not create %1$s</string>
     <string name="error_points">the main points could not be written: %1$s</string>
     <string name="error_translation">the translation failed: %1$s</string>
+    <string name="transcribe_lang">transcribe · language: %1$s</string>
+    <string name="language_doubt">Language heard: %1$s. Language chosen: %2$s.</string>
+    <string name="phase_language">listening for the language spoken…</string>
+    <string name="language_heard">language heard: %1$s</string>
+    <string name="language_heard_chosen">language heard: %1$s — chosen: %2$s</string>
+    <string name="language_confirm">language to confirm</string>
 </resources>

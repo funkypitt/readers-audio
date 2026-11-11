@@ -152,6 +152,8 @@ fun TextRow(
     secondary: String? = null,
     size: TextUnit = LocalTypo.current.tile,
     onLongPress: (() -> Unit)? = null,
+    /** Lines the text may take: one, except where cutting it would hide what the row says. */
+    lines: Int = 1,
     onClick: (() -> Unit)? = null
 ) {
     val colors = LocalColors.current
@@ -183,7 +185,7 @@ fun TextRow(
             .then(tap)
             .padding(horizontal = if (tiles && !inTile) rowPadH - tileGap else rowPadH, vertical = rowPadV * 0.7f)
     ) {
-        T(text, size = size, color = fg, maxLines = 1)
+        T(text, size = size, color = fg, maxLines = lines)
         if (secondary != null) Small(secondary, color = dim, maxLines = 1)
     }
 }

@@ -42,7 +42,7 @@
     <string name="on">ativa</string>
     <string name="off">inativa</string>
     <string name="language">língua falada</string>
-    <string name="language_auto">detetada</string>
+    <string name="language_auto">reconhecida automaticamente</string>
     <string name="model">modelo de transcrição (maior = melhor, mais lento)</string>
     <string name="model_not_yet">por descarregar</string>
     <string name="model_shared">partilhado com %s</string>
@@ -92,4 +92,10 @@
     <string name="error_cannot_create">não foi possível criar %1$s</string>
     <string name="error_points">não foi possível escrever os pontos principais: %1$s</string>
     <string name="error_translation">a tradução falhou: %1$s</string>
+    <string name="transcribe_lang">transcrever · língua: %1$s</string>
+    <string name="language_doubt">Língua que se ouve: %1$s. Língua escolhida: %2$s.</string>
+    <string name="phase_language">a reconhecer a língua falada…</string>
+    <string name="language_heard">língua que se ouve: %1$s</string>
+    <string name="language_heard_chosen">língua que se ouve: %1$s — escolhida: %2$s</string>
+    <string name="language_confirm">língua por confirmar</string>
 </resources>

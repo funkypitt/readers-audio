@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import com.freedomfighter.readersaudio.R
 import com.freedomfighter.readers.speech.audio.Decode16k
 import com.freedomfighter.readersaudio.data.Item
+import com.freedomfighter.readers.speech.whisper.Language
 import com.freedomfighter.readers.speech.whisper.Models
 import com.freedomfighter.readers.speech.whisper.Paragraphs
 import com.freedomfighter.readers.speech.whisper.Prompts
@@ -23,8 +24,24 @@ object Transcriber {
     private const val CHUNK_SECONDS = 300
     const val FOLDER = "Transcriptions"
 
-    /** The transcript text, or null when cancelled. [onProgress] gets a phase (model, transcribe) and 0–100. */
-    fun run(ctx: Context, item: Item, language: String?, modelKey: String, onProgress: (String, Int) -> Unit, cancelled: () -> Boolean): String? {
+    /**
+     * What a transcription came to: the [text], the [language] it was written in ("" when nothing
+     * could tell), and the language [heard] by listening before it started ("" when not listened for).
+     */
+    class Result(val text: String, val language: String, val heard: String)
+
+    /**
+     * The language chosen by hand is plainly not the one spoken: the recording sounds like [heard].
+     * Nothing has been transcribed; the person is asked which one to use.
+     */
+    class LanguageDoubt(val heard: String) : Exception("language")
+
+    /**
+     * The transcript, or null when cancelled. [onProgress] gets a phase (model, language,
+     * transcribe) and 0–100. [language] blank means it is found by listening first; a language
+     * chosen by hand is checked the same way unless [sure] (the person already answered).
+     */
+    fun run(ctx: Context, item: Item, language: String, sure: Boolean, modelKey: String, onProgress: (String, Int) -> Unit, cancelled: () -> Boolean): Result? {
         val model = Models.byKey(modelKey)
         if (!Models.isDownloaded(ctx, model)) {
             onProgress("model", 0)
@@ -37,22 +54,42 @@ object Transcriber {
         val totalMs = durationMs(ctx, uri).takeIf { it > 0 } ?: item.durationMs.coerceAtLeast(1)
         val segments = ArrayList<Segment>()
         var aborted = false
-        onProgress("transcribe", 0)
+        var used: String? = language.ifBlank { null }
+        var heard = ""
         handle.use { WhisperSession(handle.path, Vad.modelPath(ctx), Voices.load(ctx)).use { session ->
+            // Before the first piece: which language is spoken, from several passages of speech
+            // over the whole file — to tell whisper for every piece, or to check the one chosen
+            // by hand. Whisper left alone guesses from the first half-minute of each piece, where
+            // a jingle or an accent sends it off writing a fluent translation.
+            if (language.isBlank() || !sure) {
+                onProgress("language", 0)
+                val found = try {
+                    val cache = HashMap<Long, FloatArray>()
+                    Language.detect(session, totalMs * 16, { at, n -> cache.getOrPut(at) { Passage.read(ctx, uri, at, n, cancelled) } }) { onProgress("language", it) }
+                } catch (_: Passage.Stopped) { return null }
+                if (cancelled()) return null
+                heard = found?.language.orEmpty()
+                if (language.isBlank()) used = heard.ifBlank { null }
+                else Language.suggest(language, found)?.let { throw LanguageDoubt(it) }
+            }
+            onProgress("transcribe", 0)
             Decode16k.chunks(ctx, uri, CHUNK_SECONDS) { pcm, startMs ->
                 if (cancelled()) { aborted = true; return@chunks false }
                 val chunkMs = pcm.size / 16L
-                val prompt = if (segments.isEmpty()) Prompts.style(language) else Prompts.forPiece(language, segments.takeLast(12).joinToString(" ") { it.text })
-                val segs = session.run(pcm, language, prompt) { p ->
+                val prompt = if (segments.isEmpty()) Prompts.style(used) else Prompts.forPiece(used, segments.takeLast(12).joinToString(" ") { it.text })
+                val segs = session.run(pcm, used, prompt) { p ->
                     onProgress("transcribe", (((startMs + chunkMs * p / 100.0) / totalMs) * 100).toInt().coerceIn(0, 99))
                 }
                 if (segs == null) { aborted = true; return@chunks false }
+                // Listening heard nothing it could name: what whisper finds in the first piece
+                // holds for the rest, so the pieces agree.
+                if (used == null) used = runCatching { session.language() }.getOrDefault("").ifBlank { null }
                 segs.forEach { segments += it.copy(startMs = it.startMs + startMs, endMs = it.endMs + startMs) }
                 true
             }
         } }
         if (aborted || cancelled()) return null
-        return Paragraphs.build(segments, ctx.getString(R.string.no_speech))
+        return Result(Paragraphs.build(segments, ctx.getString(R.string.no_speech)), used.orEmpty(), heard)
     }
 
     fun durationMs(ctx: Context, uri: Uri): Long = runCatching {

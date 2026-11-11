@@ -27,8 +27,12 @@ data class Item(
     val transcriptUri: String = "",
     /** Whether that .txt carries its main points at the head. */
     val hasPoints: Boolean = false,
-    /** The language the transcription was asked in ("" = detected): the points follow it. */
+    /** The language the transcript is written in, heard or chosen ("" = unknown): the points follow it. */
     val language: String = "",
+    /** The language heard by listening before the last transcription, "" when not listened for. */
+    val heardLanguage: String = "",
+    /** A language chosen by hand that the person kept although another was heard: not asked about again. */
+    val languageSure: String = "",
     /** content:// URI of the translation's .txt beside the transcript, "" when none, and its language. */
     val translationUri: String = "",
     val translationLang: String = ""
@@ -56,7 +60,8 @@ class Library(private val context: Context) {
             val o = arr.getJSONObject(i)
             Item(o.getString("id"), o.getString("uri"), o.optString("title"), o.optString("name"), o.optString("mime", "audio/*"),
                 o.optLong("durationMs"), o.optLong("positionMs"), o.optLong("lastPlayed"), o.optLong("addedAt"), o.optString("transcriptUri"),
-                o.optBoolean("hasPoints"), o.optString("language"), o.optString("translationUri"), o.optString("translationLang"))
+                o.optBoolean("hasPoints"), o.optString("language"), o.optString("translationUri"), o.optString("translationLang"),
+                o.optString("heardLanguage"), o.optString("languageSure"))
         }
     }.getOrDefault(emptyList())
 
@@ -66,7 +71,8 @@ class Library(private val context: Context) {
             arr.put(JSONObject().put("id", r.id).put("uri", r.uri).put("title", r.title).put("name", r.name).put("mime", r.mime)
                 .put("durationMs", r.durationMs).put("positionMs", r.positionMs).put("lastPlayed", r.lastPlayed).put("addedAt", r.addedAt)
                 .put("transcriptUri", r.transcriptUri).put("hasPoints", r.hasPoints).put("language", r.language)
-                .put("translationUri", r.translationUri).put("translationLang", r.translationLang))
+                .put("translationUri", r.translationUri).put("translationLang", r.translationLang)
+                .put("heardLanguage", r.heardLanguage).put("languageSure", r.languageSure))
         }
         val tmp = File(index.parentFile, "library.json.tmp")
         tmp.writeText(arr.toString())

@@ -124,6 +124,7 @@ fun itemStatus(item: Item, activity: MainActivity): String {
     val extra = when {
         t.id == item.id -> TranscribeService.phaseLabel(ctx, t.phase, t.percent)
         item.id in t.waiting -> stringResource(R.string.phase_waiting)
+        item.id in t.doubts -> stringResource(R.string.language_confirm)
         t.errorId == item.id && t.error.isNotBlank() -> t.error
         item.transcriptUri.isNotBlank() -> stringResource(R.string.transcript_word)
         else -> ""
@@ -141,6 +142,35 @@ private fun stopLabel(item: Item): String {
     val points = (t.id == item.id && t.phase == "summary") || item.id in t.waitingPoints
     val translation = (t.id == item.id && t.phase == "translate") || item.id in t.waitingTranslation
     return stringResource(if (translation) R.string.stop_translation else if (points) R.string.stop_summary else R.string.stop_transcription)
+}
+
+/**
+ * The recording plainly speaks [TranscribeService.Doubt.heard], not the language chosen by hand:
+ * say so, and let the person pick before an hour is spent transcribing in the wrong language —
+ * whisper told the wrong language writes a fluent translation, not nonsense. The heard one comes
+ * first. Either answer is kept for this file, so it is not asked again.
+ */
+@Composable
+private fun LanguageQuestion(item: Item, activity: MainActivity, d: TranscribeService.Doubt) {
+    val typo = LocalTypo.current
+    Small(stringResource(R.string.language_doubt, languageLabel(d.heard), languageLabel(d.chosen)),
+        Modifier.padding(horizontal = rowPadH).padding(bottom = 8.dp), color = LocalColors.current.fg, maxLines = 4)
+    for (code in listOf(d.heard, d.chosen)) {
+        TextRow(stringResource(R.string.transcribe_lang, languageLabel(code)), inverted = code == d.heard, size = typo.title, lines = 2) {
+            activity.transcribe(item, code, d.model, d.summary, sure = true)
+        }
+    }
+}
+
+/**
+ * The language heard, under the transcript: « language heard: English », or with the one chosen
+ * by hand when the person kept another. Null when nothing was listened for (older transcripts).
+ */
+@Composable
+private fun heardLine(item: Item): String? {
+    if (item.heardLanguage.isBlank()) return null
+    return if (item.language.isBlank() || item.language == item.heardLanguage) stringResource(R.string.language_heard, languageLabel(item.heardLanguage))
+    else stringResource(R.string.language_heard_chosen, languageLabel(item.heardLanguage), languageLabel(item.language))
 }
 
 /** Everything one can do with a file: from a long press in the list, or ⋯ in the player. */
@@ -442,8 +472,11 @@ fun PlayerScreen(nav: Nav, app: App, activity: MainActivity) {
                 when {
                     t.id == item.id -> TextRow(TranscribeService.phaseLabel(LocalContext.current, t.phase, t.percent), secondary = stopLabel(item), size = typo.title) { activity.cancelTranscription() }
                     item.id in t.waiting -> TextRow(stringResource(R.string.phase_waiting), secondary = stopLabel(item), size = typo.title) { activity.cancelTranscription() }
+                    // The question replaces the rows of an earlier transcript until it is answered:
+                    // the two rows under it are what starts the transcription again.
+                    item.id in t.doubts -> LanguageQuestion(item, activity, t.doubts.getValue(item.id))
                     item.transcriptUri.isNotBlank() -> {
-                        TextRow(stringResource(R.string.open_transcript), secondary = stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
+                        TextRow(stringResource(R.string.open_transcript), secondary = heardLine(item) ?: stringResource(R.string.transcript_saved), size = typo.title) { activity.openTranscript(item) }
                         TextRow(stringResource(R.string.share_transcript), size = typo.title) { activity.shareTranscript(item) }
                         PointsRow(item, nav)
                         translateOffer(item)?.let { o -> TextRow(o.title, secondary = o.secondary, size = typo.title, onClick = o.onClick?.let { f -> { f(activity) } }) }
@@ -523,7 +556,7 @@ fun SettingsScreen(nav: Nav, app: App) {
 
 
 /**
- * Asked before every transcription: the language spoken, the phone's by default, and the
+ * Asked before every transcription: the language spoken, found by listening by default, and the
  * quality, normal by default. High quality is Whisper large-v3-turbo: better punctuation and
  * accuracy, much slower. A bottom sheet in the Reader's style.
  */
@@ -535,7 +568,9 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val colors = LocalColors.current
     val typo = LocalTypo.current
-    var language by remember { mutableStateOf(Prefs.deviceLanguage()) }
+    // Found by listening unless chosen here: the phone's language, or the last one chosen, sent
+    // English talks to be transcribed as French — fluently, so nobody noticed until reading.
+    var language by remember { mutableStateOf("") }
     var quality by remember { mutableStateOf(Models.DEFAULT) }
     // The main points: remembered from last time, and only offered to a phone that can hold the
     // two gigabytes the model needs. The first tap fetches it; the choice applies to this file.
@@ -605,9 +640,14 @@ fun TranscribeSheet(item: Item, activity: MainActivity, onDismiss: () -> Unit) {
                 )
             }
             if (tiles) Spacer(Modifier.height(6.dp)) else Rule(color = colors.fg)
-            Row(Modifier.fillMaxWidth()) {
+            // The language is said on the button itself: it cannot be missed on the way to pressing it.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.action_cancel), onClick = onDismiss) }
-                Box(Modifier.weight(1f)) { TextRow(stringResource(R.string.transcribe), inverted = true) { activity.transcribe(item, language, quality, points && summaryHere); onDismiss() } }
+                Box(Modifier.weight(2f)) {
+                    TextRow(stringResource(R.string.transcribe_lang, languageLabel(language)), inverted = true, lines = 2) {
+                        activity.transcribe(item, language, quality, points && summaryHere); onDismiss()
+                    }
+                }
             }
         }
         }
